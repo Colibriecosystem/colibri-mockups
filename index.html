@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="ru" data-theme="dark">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="color-scheme" content="dark light" />
+        <title>Colibri — макеты</title>
+        <link rel="stylesheet" href="nest-catalog/kit/tokens.css" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400&family=IBM+Plex+Sans:wght@400;500;600&display=swap" />
+        <link rel="stylesheet" href="nest-catalog/kit/components.css" />
+        <style>
+            .lead {
+                max-width: 60ch;
+            }
+            .review {
+                display: grid;
+                gap: var(--s-3);
+                margin-top: var(--s-5);
+            }
+            .review .card h2 {
+                margin-bottom: var(--s-2);
+            }
+            .links {
+                display: flex;
+                flex-wrap: wrap;
+                gap: var(--s-2);
+                margin-top: var(--s-4);
+            }
+        </style>
+    </head>
+    <body class="console">
+        <header class="topbar">
+            <a class="brand" href="./"><span>Colibri</span><span class="brand-sub">макеты</span></a>
+        </header>
+
+        <main class="page">
+            <div class="page-head">
+                <div>
+                    <h1>Макеты интерфейса</h1>
+                    <p class="lead">
+                        Статические HTML-макеты — то, что обсуждаем до того, как это построено. Ничего не устанавливается и никуда не
+                        отправляется: страницы работают локально, вся «начинка» нарисована. Замечания — в
+                        <a href="https://github.com/Colibriecosystem/colibri-mockups/issues">issues</a>.
+                    </p>
+                </div>
+            </div>
+
+            <div class="review">
+                <article class="card">
+                    <h2>Каталог Nest — список вместо сетки карточек</h2>
+                    <p class="dim">
+                        Сейчас каталог виджетов — сетка карточек по 236 px: помещаются имя, автор, пара чипов и одна кнопка. Три варианта
+                        строки на всю ширину, по одному виджету в строке: плотная таблица, просторные карточки-строки и двухуровневая
+                        строка, которая раскрывается на месте. Данные настоящие — десять виджетов из каталога.
+                    </p>
+                    <div class="links">
+                        <a class="btn btn-primary" href="nest-catalog/index.html">Открыть →</a>
+                        <a class="btn" href="nest-catalog/variant-1-dense.html">1 — плотная таблица</a>
+                        <a class="btn" href="nest-catalog/variant-2-cards.html">2 — карточки-строки</a>
+                        <a class="btn" href="nest-catalog/variant-3-expand.html">3 — двухуровневая</a>
+                    </div>
+                </article>
+            </div>
+        </main>
+
+        <footer class="footer">
+            <span class="dim small">Colibri · макеты интерфейса. Тёмная и светлая темы, русский и English — переключатели на странице макета.</span>
+        </footer>
+    </body>
+</html>

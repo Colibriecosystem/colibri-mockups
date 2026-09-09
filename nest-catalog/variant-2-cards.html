@@ -1,0 +1,134 @@
+<!doctype html>
+<!-- Variant 2 — ROOMY CARD ROWS (min 120 px, grow with content).
+     Everything a row can know, with nothing capped: the FULL description, the author's brand chips
+     in their listing-hero form, chips grouped on labelled sub-rows (package · permissions · network
+     · tags) and a right-hand meta column of counts, dates, size and hash.
+     Fewest widgets per screen; the only variant where nothing is hidden behind a tooltip or a +N.
+     See README.md § The three variants. -->
+<html lang="ru" data-theme="dark" data-title-key="cat.title">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="color-scheme" content="dark light" />
+        <title>Nest</title>
+        <link rel="stylesheet" href="kit/tokens.css" />
+        <!-- IBM Plex from Google Fonts, declared AFTER tokens.css so these faces win the family
+             match over the kit's fonts/ references (the woff2 binaries are deliberately not
+             vendored). Offline the link simply does not load and the stack falls back to
+             system-ui / Segoe UI — the layout holds, the metrics differ slightly. -->
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400&family=IBM+Plex+Sans:wght@400;500;600&display=swap" />
+        <link rel="stylesheet" href="kit/components.css" />
+        <link rel="stylesheet" href="catalog.css" />
+        <script src="catalog-i18n.js"></script>
+        <script src="kit/icons.js"></script>
+        <script src="kit/mockup.js"></script>
+    </head>
+    <body class="console">
+        <header class="topbar">
+            <a class="brand" href="index.html"><span>Nest</span><span class="brand-sub">catalog mockups</span></a>
+            <span class="hint">variant 2 — card rows</span>
+            <div class="topbar-right">
+                <div class="seg" role="group" data-i18n-attr="aria-label:lang.label">
+                    <button type="button" data-set-lang="ru" aria-pressed="true">RU</button>
+                    <button type="button" data-set-lang="en" aria-pressed="false">EN</button>
+                </div>
+                <div class="seg" role="group" data-i18n-attr="aria-label:theme.label">
+                    <button type="button" data-set-theme="dark" data-i18n-attr="title:theme.dark,aria-label:theme.dark"><svg class="icon"><use href="#i-moon" /></svg></button>
+                    <button type="button" data-set-theme="light" data-i18n-attr="title:theme.light,aria-label:theme.light"><svg class="icon"><use href="#i-sun" /></svg></button>
+                    <button type="button" data-set-theme="system" data-i18n-attr="title:theme.system,aria-label:theme.system"><svg class="icon"><use href="#i-system" /></svg></button>
+                </div>
+            </div>
+        </header>
+
+        <main class="page page-wide">
+            <div class="vw-ruler"><span id="vw-ruler-value">1280 px</span></div>
+
+            <!-- the desktop Nest window; the mock bar flips its width between 1024 and 1280 -->
+            <div class="app">
+                <div class="win-title">
+                    <span data-i18n="cat.title"></span>
+                    <span class="win-caps" aria-hidden="true"><span>—</span><span>▢</span><span>✕</span></span>
+                </div>
+                <nav class="win-tabs" data-i18n-attr="aria-label:cat.title">
+                    <!-- Strings.Nest.Tab.Catalog / .MyWidgets / .Author / .Settings -->
+                    <button type="button" aria-current="page" data-i18n="cat.tab.catalog"></button>
+                    <button type="button" data-i18n="cat.tab.myWidgets"></button>
+                    <button type="button" data-i18n="cat.tab.author"></button>
+                    <button type="button" data-i18n="cat.tab.settings"></button>
+                </nav>
+
+                <div class="app-body">
+                    <!-- left rail: curated categories with counts, then the trust strip -->
+                    <aside class="rail">
+                        <div class="rail-list" id="rail-list"></div>
+                        <div class="trust">
+                            <!-- Strings.Nest.Trust.Network / .Trading / .Transparency -->
+                            <span data-i18n="cat.trust.network"></span>
+                            <span data-i18n="cat.trust.trading"></span>
+                            <span data-i18n="cat.trust.transparency"></span>
+                        </div>
+                    </aside>
+
+                    <div class="main">
+                        <div class="toolbar">
+                            <label class="search">
+                                <svg class="icon"><use href="#i-search" /></svg>
+                                <!-- Strings.Nest.Search.Watermark -->
+                                <input class="input" type="search" data-i18n-attr="placeholder:cat.search" />
+                            </label>
+
+                            <!-- uploader tags: chips beside the search, labels VERBATIM -->
+                            <details class="menu">
+                                <summary class="btn btn-sm" data-i18n-attr="aria-label:cat.tags">☰ <span aria-hidden="true">▾</span></summary>
+                                <div class="menu-list tag-flyout">
+                                    <!-- Strings.Nest.TagSearch.Watermark -->
+                                    <input class="input input-sm" type="search" data-i18n-attr="placeholder:cat.tagSearch" />
+                                    <div id="tag-list"></div>
+                                </div>
+                            </details>
+
+                            <!-- sort control: name · newest · updated · installs · active -->
+                            <details class="menu sort-menu">
+                                <summary class="btn btn-sm"><span data-i18n="cat.sort.label"></span> <span aria-hidden="true">▾</span></summary>
+                                <div class="menu-list">
+                                    <!-- Strings.Nest.Sort.Name / .Newest / .Updated / .Installs / .Active -->
+                                    <button type="button" data-cat-sort="name" data-i18n="cat.sort.name"></button>
+                                    <button type="button" data-cat-sort="newest" data-i18n="cat.sort.newest"></button>
+                                    <button type="button" data-cat-sort="updated" data-i18n="cat.sort.updated"></button>
+                                    <button type="button" data-cat-sort="installs" data-i18n="cat.sort.installs"></button>
+                                    <button type="button" data-cat-sort="active" data-i18n="cat.sort.active"></button>
+                                </div>
+                            </details>
+                        </div>
+
+                        <div id="catalog"></div>
+                        <!-- Strings.Nest.ShownFormat + Strings.Nest.ShowMore, page of 25 -->
+                        <div class="pager" id="pager"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <div class="mock-bar">
+            <span class="label" data-i18n="cat.mock.label"></span>
+            <span data-i18n="cat.mock.width"></span>
+            <button type="button" data-cat-vw="1024">1024</button>
+            <button type="button" data-cat-vw="1280">1280</button>
+            <span>·</span>
+            <span data-i18n="cat.mock.rows"></span>
+            <button type="button" data-cat-rows="10" aria-pressed="true" data-i18n="cat.mock.rows10"></button>
+            <button type="button" data-cat-rows="28" aria-pressed="false" data-i18n="cat.mock.rows28"></button>
+            <span>·</span>
+            <button type="button" data-cat-likes aria-pressed="false" data-i18n="cat.mock.likes"></button>
+            <span>· <a href="index.html">index</a> · <a href="variant-1-dense.html">variant 1</a> · <a href="variant-3-expand.html">variant 3</a></span>
+            <span class="ph-note" data-i18n="cat.mock.note"></span>
+        </div>
+
+        <script src="catalog-data.js"></script>
+        <script>
+            NEST_CATALOG.init({ variant: "cards" });
+        </script>
+    </body>
+</html>
