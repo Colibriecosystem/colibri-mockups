@@ -139,7 +139,8 @@
         if (w.state === "takendown") return "takendown";
         if (w.state === "withdrawn") return "withdrawn";
         var l = latest(w);
-        if (l && l.state === "checking") return "checking";
+        /* an approved widget keeps its standing while an update is checked; the update shows beside it */
+        if (l && l.state === "checking" && !w.everApproved) return "checking";
         if (!w.everApproved) {
             if (!l || l.state === "withdrawn") return "draft";
             if (l.state === "refused") return "refused";
@@ -416,6 +417,13 @@
             n.short = T("au.next.refused.short");
             return n;
         }
+        if (pend && pend.state === "checking") {
+            n.tone = "info";
+            n.title = T("au.feedback.checking", { v: pend.v });
+            n.body = T("au.next.checking.body");
+            n.short = T("au.next.checking.short");
+            return n;
+        }
         if (pend && pend.state === "pending") {
             n.tone = pend.overdue ? "warn" : "info";
             n.title = pend.overdue ? T("au.feedback.overdue", { v: pend.v, date: fmtDate(pend.due) }) : T("au.feedback.waiting", { v: pend.v, date: fmtDate(pend.due) });
@@ -482,6 +490,8 @@
         var pend = pendingOf(w);
         var meta = stateChip(w);
         if (pend && w.everApproved && pend.state === "pending") meta += ' <span class="chip chip-warn">' + esc(T("au.pendingVersion", { v: pend.v })) + "</span>";
+        if (pend && w.everApproved && pend.state === "checking") meta += ' <span class="chip chip-info"><span class="status-dot pulse"></span>' + esc(T("au.feedback.checking", { v: pend.v })) + "</span>";
+        if (w.catalogRequested && w.visibility !== "catalog") meta += ' <span class="chip chip-info">' + esc(T("au.chip.catalogRequested")) + "</span>";
         if (w.pendingName) meta += ' <span class="chip chip-warn">' + esc(T("au.pendingName", { name: w.pendingName })) + "</span>";
         meta += ' <span class="idline">ID ' + esc(w.id) + ' <button data-act="copy" data-text="' + esc(w.id) + '" title="' + esc(T("au.copyId")) + '">' + icon("copy", "sm") + "</button></span>";
         var canRelease = w.state !== "takendown" && w.state !== "withdrawn" && !(pend && pend.state === "checking");
@@ -827,6 +837,7 @@
                 '<label class="radio"><input type="radio" name="vis"' + (inCat ? " checked" : "") + ' data-act="vis" data-id="' + esc(w.id) + '" value="catalog"/><div><b>' + esc(T("au.vis.catalog")) + later() + "</b><span>" + esc(inCat ? T("au.vis.catalogNow") : T("au.vis.toCatalog")) + "</span></div></label>" +
                 '<label class="radio"><input type="radio" name="vis"' + (!inCat ? " checked" : "") + ' data-act="vis" data-id="' + esc(w.id) + '" value="link"/><div><b>' + esc(T("au.vis.link")) + later() + "</b><span>" + esc(T("au.vis.toLink")) + "</span></div></label></div>";
         }
+        if (w.catalogRequested && w.visibility !== "catalog") vis += '<p class="dim" style="margin-top:6px">' + esc(T("au.access.catalogRequested")) + "</p>";
         out += '<div class="card"><h2 class="sec">' + esc(T("au.access.visibility")) + "</h2>" + vis + "</div>";
 
         var life = "";
@@ -1064,7 +1075,7 @@
             notesRu: "",
             notesEn: "",
             packed: false,
-            visibility: "catalog",
+            visibility: w.everApproved ? w.visibility || "catalog" : "catalog",
             error: null
         };
     }
@@ -1228,17 +1239,25 @@
             '<dl class="summary-kv"><dt>' + esc(T("au.col.widget")) + "</dt><dd>" + wname(w) + "</dd>" +
             "<dt>" + esc(T("au.wiz.sum.version")) + '</dt><dd class="mono">' + esc(v) + "</dd>" +
             "<dt>" + esc(T("au.col.notes")) + "</dt><dd>" + (notes ? '<div class="quote">' + esc(notes) + "</div>" : '<span class="faint">' + esc(T("au.v.noNotes")) + "</span>") + "</dd></dl>";
-        var vis;
-        if (z.first) {
-            vis =
-                '<h4 style="margin:10px 0 6px">' + esc(T("au.wiz.vis.title")) + "</h4>" +
-                '<div class="vis">' +
-                '<label class="radio"><input type="radio" name="wvis" value="catalog" data-act="wiz-vis"' + (z.visibility === "catalog" ? " checked" : "") + "/><div><b>" + esc(T("au.vis.catalog")) + "</b><span>" + esc(T("au.wiz.vis.catalogSub")) + "</span></div></label>" +
-                '<label class="radio"><input type="radio" name="wvis" value="link" data-act="wiz-vis"' + (z.visibility === "link" ? " checked" : "") + "/><div><b>" + esc(T("au.vis.link")) + "</b><span>" + esc(T("au.wiz.vis.linkSub")) + "</span></div></label></div>" +
-                '<p class="hint" style="margin-top:6px">' + esc(T("au.wiz.vis.firstReview")) + "</p>";
-        } else {
-            vis = '<p class="dim" style="margin-top:8px">' + esc(T("au.wiz.vis.current", { vis: w.visibility === "link" ? T("au.state.link") : T("au.state.live") })) + "</p>";
+        /* the choice is on every release: a first version defaults to the catalog, an update to
+           where the widget is now; leaving the catalog needs no moderator, entering it does */
+        var cur = z.first ? null : w.visibility;
+        function sub(opt) {
+            if (z.first) return opt === "catalog" ? T("au.wiz.vis.catalogSub") : T("au.wiz.vis.linkSub");
+            if (opt === cur) return T("au.wiz.vis.same");
+            return opt === "link" ? T("au.wiz.vis.toLinkNow") : T("au.wiz.vis.toCatalogReq");
         }
+        function opt(value, label) {
+            return (
+                '<label class="radio"><input type="radio" name="wvis" value="' + value + '" data-act="wiz-vis"' + (z.visibility === value ? " checked" : "") + "/><div><b>" + esc(label) +
+                (value === cur ? ' <span class="chip">' + esc(T("au.wiz.vis.now")) + "</span>" : "") +
+                '</b><span id="wvis-sub-' + value + '">' + esc(sub(value)) + "</span></div></label>"
+            );
+        }
+        var vis =
+            '<h4 style="margin:10px 0 6px">' + esc(z.first ? T("au.wiz.vis.title") : T("au.wiz.vis.titleUpdate")) + "</h4>" +
+            '<div class="vis">' + opt("catalog", T("au.vis.catalog")) + opt("link", T("au.vis.link")) + "</div>" +
+            (z.first ? '<p class="hint" style="margin-top:6px">' + esc(T("au.wiz.vis.firstReview")) + "</p>" : "");
         var err = z.error ? '<div class="banner banner-error" style="margin-top:10px">' + icon("warn") + '<div class="banner-body">' + esc(z.error) + "</div></div>" : "";
         return sum + vis + err;
     }
@@ -1274,7 +1293,10 @@
         w.versions.unshift(nv);
         w.code.manifestVersion = v;
         if (!w.share) w.share = "Nw3Qe8Rt1Yu6Io9Pa4Sd7Fg2Hj5Kl0Zx3Cv8Bn1Mq6W";
-        if (z.first) w.catalogRequested = z.visibility === "catalog";
+        var vis = z.visibility;
+        var first = z.first;
+        if (first) w.catalogRequested = vis === "catalog";
+        else if (vis === "catalog" && w.visibility === "link") w.catalogRequested = true;
         S.open[w.id + "@" + v] = true;
         S.wiz = null;
         closeDialog();
@@ -1288,6 +1310,12 @@
                 nv.state = "pending";
                 nv.due = addWorkingDays(D.NOW, 3);
                 window.NEST.toast(T("au.toast.passed", { v: v }));
+                if (!first && vis === "link" && w.visibility === "catalog") {
+                    w.visibility = "link";
+                    w.state = "link";
+                    w.catalogRequested = false;
+                    window.NEST.toast(T("au.toast.nowLinkOnly"));
+                }
             }
             /* skip a frame while the reviewer is typing somewhere on the page */
             var a = document.activeElement;
