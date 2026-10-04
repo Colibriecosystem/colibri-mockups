@@ -1,0 +1,181 @@
+<!doctype html>
+<!-- The author-workspace mock: what it is, how to drive it, one link per journey step, and the
+     review checklist. The prototype itself is prototype.html. -->
+<html lang="ru" data-theme="dark">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="color-scheme" content="dark light" />
+        <title>Путь автора · Nest</title>
+        <link rel="stylesheet" href="kit/tokens.css" />
+        <link rel="stylesheet" href="kit/components.css" />
+        <link rel="stylesheet" href="author.css" />
+        <script src="author-i18n.js"></script>
+        <script src="kit/icons.js"></script>
+        <script src="kit/mockup.js"></script>
+        <style>
+            .check {
+                list-style: none;
+                padding: 0;
+                display: grid;
+                gap: 6px;
+            }
+            .check li {
+                display: grid;
+                grid-template-columns: 20px 1fr;
+                gap: 8px;
+                align-items: start;
+            }
+            .check input {
+                margin-top: 3px;
+                accent-color: var(--accent);
+            }
+            .steps-table td:first-child {
+                white-space: nowrap;
+                font-family: var(--font-mono);
+            }
+            .steps-table td:last-child {
+                white-space: nowrap;
+            }
+            .legend-row {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px 18px;
+                align-items: center;
+            }
+        </style>
+    </head>
+    <body class="console">
+        <header class="topbar">
+            <a class="brand" href="../index.html"><span>Colibri</span><span class="brand-sub">макеты</span></a>
+            <span class="hint">путь автора</span>
+            <div class="topbar-right">
+                <div class="seg" role="group" data-i18n-attr="aria-label:theme.label">
+                    <button type="button" data-set-theme="dark" data-i18n-attr="title:theme.dark,aria-label:theme.dark"><svg class="icon"><use href="#i-moon" /></svg></button>
+                    <button type="button" data-set-theme="light" data-i18n-attr="title:theme.light,aria-label:theme.light"><svg class="icon"><use href="#i-sun" /></svg></button>
+                    <button type="button" data-set-theme="system" data-i18n-attr="title:theme.system,aria-label:theme.system"><svg class="icon"><use href="#i-system" /></svg></button>
+                </div>
+            </div>
+        </header>
+
+        <main class="page">
+            <div class="page-head">
+                <div>
+                    <h1>Путь автора — вкладка «Автор» в окне Nest</h1>
+                    <p>
+                        Один кликабельный прототип всего пути автора виджета: стать автором, завести виджет, связать его с кодом, выпустить
+                        версию, поделиться, обновлять, следить и снять с публикации. Всё на одной вкладке терминала. Главное здесь — мастер
+                        выпуска: номер версии → «Что нового» → сборка → отправка, а дальше решение приходит в строку версии.
+                    </p>
+                </div>
+                <a class="btn btn-primary" href="prototype.html">Открыть прототип →</a>
+            </div>
+
+            <div class="card">
+                <h2 style="margin-bottom: 8px">Шаги пути</h2>
+                <div class="table-scroll">
+                    <table class="data steps-table">
+                        <thead>
+                            <tr>
+                                <th>Шаг</th>
+                                <th>Что посмотреть</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>1</td>
+                                <td>Стать автором: профиль, ID автора выдаётся один раз.</td>
+                                <td><a href="prototype.html?author=none">открыть</a></td>
+                            </tr>
+                            <tr>
+                                <td>2</td>
+                                <td>Создать виджет: нужно только название, ID выдаёт Nest. Кнопка «Новый виджет» вверху.</td>
+                                <td><a href="prototype.html#/">открыть</a></td>
+                            </tr>
+                            <tr>
+                                <td>3</td>
+                                <td>Код: связать папку — терминал сам впишет ID в widget.json. Шаблон и адрес сайта — позже.</td>
+                                <td><a href="prototype.html#/w/5d1e8c2a-7f43-4b9e-a0c6-2e9b71f4d835/code">открыть</a></td>
+                            </tr>
+                            <tr>
+                                <td>4</td>
+                                <td>Выпустить версию: мастер из четырёх шагов, проверки после отправки, ответ модератора в строке версии.</td>
+                                <td><a href="prototype.html#/w/liquidation-radar/overview/release">открыть</a></td>
+                            </tr>
+                            <tr>
+                                <td>5</td>
+                                <td>Поделиться и видимость: ссылка в любой момент; «В каталог / Только по ссылке».</td>
+                                <td><a href="prototype.html#/w/71f0c3d8-2e9a-4b6c-8f17-5a4d0e9b3c21/access">открыть</a></td>
+                            </tr>
+                            <tr>
+                                <td>6</td>
+                                <td>Обновлять: история версий, «Что нового», отозвать версию с проверки.</td>
+                                <td><a href="prototype.html#/w/funding-monitor/versions">открыть</a></td>
+                            </tr>
+                            <tr>
+                                <td>7</td>
+                                <td>Следить: установки, активные пользователи, версии у пользователей.</td>
+                                <td><a href="prototype.html?scope=full#/w/funding-monitor/stats">открыть</a></td>
+                            </tr>
+                            <tr>
+                                <td>8</td>
+                                <td>Снять, вернуть, удалить; объявить устаревшим и передать — позже. Снятие модератором — у «Копи-сигналов».</td>
+                                <td><a href="prototype.html#/w/b09e4a72-5d31-4c8f-a6e0-3f7b28d1c954/access">открыть</a></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2 style="margin-bottom: 8px">Как пользоваться</h2>
+                <p class="dim">Внизу страницы прототипа — жёлтая полоса <b>MOCKUP</b>. Это пульт для ревью, а не часть интерфейса:</p>
+                <ul style="margin: 8px 0 0 18px">
+                    <li><b>ширина</b> — окно Nest на 800, 1024 или 1280 px; на 800 список виджетов и страница виджета открываются по очереди;</li>
+                    <li><b>автор</b> — ещё не автор, автор без виджетов, обычный автор, ID не читается, нет сети (отправка версии тогда падает);</li>
+                    <li><b>объём</b> — «первая поставка» прячет всё, что сделаем позже; «весь путь» показывает это с пометкой «позже»;</li>
+                    <li><b>шаги пути</b> — сразу на экран шага 1–8;</li>
+                    <li><b>глазами пользователя</b> — вкладка «Каталог»: как пользователь видит «Что нового» перед обновлением.</li>
+                </ul>
+                <p class="dim" style="margin-top: 8px">Каждый экран — свой адрес, его можно скопировать в замечание.</p>
+                <div class="legend-row" style="margin-top: 10px">
+                    <span><span class="ph">так подчёркнуто</span> — выдумано для макета</span>
+                    <span><span class="later-chip">позже</span> — следующий шаг, не первая поставка</span>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2 style="margin-bottom: 8px">Что настоящее</h2>
+                <p class="dim">
+                    Автор Colibri и два его виджета из публичного каталога — «Фандинг-монитор» и «Радар ликвидаций»: названия, описания,
+                    категории, теги, разрешения и адреса. Всё остальное нарисовано: другие виджеты, даты, числа, «Что нового», переписка,
+                    папки. Отказы и снятия есть только у выдуманных виджетов. У «Радара ликвидаций» намеренно нет статистики: нет данных —
+                    значит пусто, а не ноль. Состояние живёт в памяти: перезагрузка страницы начинает заново. Только русский.
+                </p>
+            </div>
+
+            <div class="card">
+                <h2 style="margin-bottom: 8px">Что проверить</h2>
+                <ul class="check">
+                    <li><input type="checkbox" /><span>Сводка: про каждый виджет понятно, в каком он состоянии и что с ним делать дальше.</span></li>
+                    <li><input type="checkbox" /><span>«Что дальше» на странице виджета: одна фраза и одно главное действие в любом состоянии.</span></li>
+                    <li><input type="checkbox" /><span>Мастер выпуска: предложенный номер, «Что нового» (обязательно для обновления), сборка с тем, что изменится для пользователей.</span></li>
+                    <li><input type="checkbox" /><span>Выбор «В каталог / Только по ссылке» есть только у первой версии; у обновления видимость не меняется.</span></li>
+                    <li><input type="checkbox" /><span>После отправки проверки идут прямо в строке версии; ответ модератора и переписка — там же, а не в диалоге.</span></li>
+                    <li><input type="checkbox" /><span>Отклонённая версия: причина, что исправить и «Отправить новую версию…» — это тот же мастер.</span></li>
+                    <li><input type="checkbox" /><span>Отозвать версию с проверки и изменить «Что нового» без новой версии.</span></li>
+                    <li><input type="checkbox" /><span>Связать папку: видно, какую строку widget.json терминал меняет.</span></li>
+                    <li><input type="checkbox" /><span>Ссылку на виджет можно скопировать в любой момент, а не только сразу после отправки.</span></li>
+                    <li><input type="checkbox" /><span>«Глазами пользователя»: «Что нового» перед обновлением и предупреждение о новом доступе.</span></li>
+                    <li><input type="checkbox" /><span>Ширина 800: ничего не обрезано, есть путь назад к списку.</span></li>
+                    <li><input type="checkbox" /><span>«Первая поставка»: без отмеченного «позже» путь остаётся цельным.</span></li>
+                </ul>
+            </div>
+        </main>
+
+        <footer class="footer">
+            <span class="dim small">Colibri · макеты интерфейса. Тёмная и светлая темы — переключатель вверху.</span>
+        </footer>
+    </body>
+</html>

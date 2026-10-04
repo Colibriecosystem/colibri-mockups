@@ -1,0 +1,91 @@
+<!doctype html>
+<!-- The Nest window on the Author tab, clickable. author-app.js draws every screen into
+     #author-root from author-data.js; the mock bar at the bottom is review chrome, not design. -->
+<html lang="ru" data-theme="dark">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="color-scheme" content="dark light" />
+        <title>Автор · Nest</title>
+        <link rel="stylesheet" href="kit/tokens.css" />
+        <link rel="stylesheet" href="kit/components.css" />
+        <link rel="stylesheet" href="author.css" />
+        <script src="author-i18n.js"></script>
+        <script src="kit/icons.js"></script>
+        <script src="author-icons.js"></script>
+        <script src="kit/mockup.js"></script>
+    </head>
+    <body class="console">
+        <header class="topbar">
+            <a class="brand" href="index.html"><span>Nest</span><span class="brand-sub">путь автора · прототип</span></a>
+            <span class="hint">вкладка «Автор» окна Nest</span>
+            <div class="topbar-right">
+                <div class="seg" role="group" data-i18n-attr="aria-label:theme.label">
+                    <button type="button" data-set-theme="dark" data-i18n-attr="title:theme.dark,aria-label:theme.dark"><svg class="icon"><use href="#i-moon" /></svg></button>
+                    <button type="button" data-set-theme="light" data-i18n-attr="title:theme.light,aria-label:theme.light"><svg class="icon"><use href="#i-sun" /></svg></button>
+                    <button type="button" data-set-theme="system" data-i18n-attr="title:theme.system,aria-label:theme.system"><svg class="icon"><use href="#i-system" /></svg></button>
+                </div>
+            </div>
+        </header>
+
+        <main class="page page-wide">
+            <div class="vw-ruler"><span id="vw-ruler-value">1024 px</span></div>
+
+            <!-- the desktop Nest window; the mock bar flips its width between 800, 1024 and 1280 -->
+            <div class="app">
+                <div class="win-title">
+                    <span data-i18n="au.win.title"></span>
+                    <span class="win-caps" aria-hidden="true"><span>—</span><span>▢</span><span>✕</span></span>
+                </div>
+                <nav class="win-tabs" aria-label="Nest">
+                    <button type="button" data-tab="catalog" data-i18n="au.tab.catalog"></button>
+                    <button type="button" data-tab="mywidgets" data-i18n="au.tab.myWidgets"></button>
+                    <button type="button" data-tab="author" aria-current="page" data-i18n="au.tab.author"></button>
+                    <button type="button" data-tab="settings" data-i18n="au.tab.settings"></button>
+                </nav>
+                <div id="author-root"></div>
+            </div>
+        </main>
+
+        <dialog id="dlg"></dialog>
+
+        <div class="mock-bar" role="toolbar" aria-label="Пульт макета">
+            <span class="label">Mockup</span>
+            <span class="grp">ширина
+                <button type="button" data-act="vw" data-v="800">800</button>
+                <button type="button" data-act="vw" data-v="1024">1024</button>
+                <button type="button" data-act="vw" data-v="1280">1280</button>
+            </span>
+            <span class="sep"></span>
+            <span class="grp">автор
+                <button type="button" data-act="author-state" data-v="none">нет</button>
+                <button type="button" data-act="author-state" data-v="empty">без виджетов</button>
+                <button type="button" data-act="author-state" data-v="yes">есть</button>
+                <button type="button" data-act="author-state" data-v="unreadable">ID не читается</button>
+                <button type="button" data-act="author-state" data-v="offline">нет сети</button>
+            </span>
+            <span class="sep"></span>
+            <span class="grp">объём
+                <button type="button" data-act="scope" data-v="first">первая поставка</button>
+                <button type="button" data-act="scope" data-v="full">весь путь</button>
+            </span>
+            <span class="sep"></span>
+            <span class="grp">шаги пути
+                <button type="button" data-act="tour" data-v="1" title="Стать автором">1</button>
+                <button type="button" data-act="tour" data-v="2" title="Создать виджет">2</button>
+                <button type="button" data-act="tour" data-v="3" title="Код">3</button>
+                <button type="button" data-act="tour" data-v="4" title="Выпустить версию">4</button>
+                <button type="button" data-act="tour" data-v="5" title="Поделиться и видимость">5</button>
+                <button type="button" data-act="tour" data-v="6" title="Обновлять">6</button>
+                <button type="button" data-act="tour" data-v="7" title="Следить">7</button>
+                <button type="button" data-act="tour" data-v="8" title="Снять, передать, удалить">8</button>
+            </span>
+            <span class="sep"></span>
+            <button type="button" data-act="user-view">глазами пользователя</button>
+            <span class="ph-note">пунктир — выдумано для макета</span>
+        </div>
+
+        <script src="author-data.js"></script>
+        <script src="author-app.js"></script>
+    </body>
+</html>
