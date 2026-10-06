@@ -203,7 +203,14 @@
     /* ---------- router ---------- */
     function route() {
         var h = location.hash.replace(/^#\/?/, "").split("/");
-        if (h[0] === "w" && h[1]) return { kind: "widget", id: decodeURIComponent(h[1]), sec: h[2] || "overview", release: h[3] === "release" };
+        if (h[0] === "w" && h[1])
+            return {
+                kind: "widget",
+                id: decodeURIComponent(h[1]),
+                sec: h[2] || "overview",
+                release: h[3] === "release",
+                rollback: h[3] === "rollback" && h[4] ? decodeURIComponent(h[4]) : null
+            };
         if (h[0] === "local" && h[1]) return { kind: "local", key: decodeURIComponent(h[1]) };
         if (h[0] === "profile") return { kind: "profile" };
         return { kind: "summary" };
@@ -231,10 +238,10 @@
         else if (S.tab !== "author") root.innerHTML = '<div class="placeholder-tab">' + esc(T("au.otherTab")) + "</div>";
         else root.innerHTML = renderAuthor(r);
         /* the wizard follows the route, so a link to it opens it */
-        if (S.tab === "author" && r.kind === "widget" && r.release && find(r.id) && S.author !== "none" && S.author !== "unreadable") {
+        if (S.tab === "author" && r.kind === "widget" && (r.release || r.rollback) && find(r.id) && S.author !== "none" && S.author !== "unreadable") {
             /* an open wizard is left alone, so a background re-render never eats what is being typed */
-            if (!S.wiz || S.wiz.id !== r.id) {
-                startWizard(r.id);
+            if (!S.wiz || S.wiz.id !== r.id || S.wiz.from !== r.rollback) {
+                startWizard(r.id, r.rollback);
                 renderWizard();
             } else if (!dlg.open) renderWizard();
         } else if (S.wiz) {
@@ -691,7 +698,9 @@
                     '<details class="menu"><summary class="btn btn-icon btn-sm" aria-label="' + esc(T("au.more")) + '">' + icon("more", "sm") + '</summary><div class="menu-list">' +
                     '<button data-act="edit-notes" data-key="' + esc(key) + '">' + icon("pencil") + esc(T("au.v.editNotes")) + "</button>" +
                     (v.state === "pending" ? '<button data-act="withdraw-version" data-key="' + esc(key) + '">' + icon("x") + esc(T("au.v.withdraw")) + "</button>" : "") +
-                    (v.state === "approved" && !v.current ? '<button class="later" data-toast="au.toast.later">' + icon("undo") + esc(T("au.v.rollback")) + later() + "</button>" : "") +
+                    (v.state === "approved" && !v.current && w.state !== "takendown" && w.state !== "withdrawn"
+                        ? '<button data-act="rollback" data-key="' + esc(key) + '">' + icon("undo") + esc(T("au.v.rollback")) + "</button>"
+                        : "") +
                     (v.state === "approved" && v.current ? '<button class="later" data-toast="au.toast.later">' + icon("flask") + esc(T("au.v.prerelease")) + later() + "</button>" : "") +
                     "</div></details>";
                 var main =
@@ -735,6 +744,7 @@
         var changes = renderChanges(w, v, prev);
         var status = v.state === "approved" && !v.thread.length ? "" : '<div style="grid-column:1/-1">' + renderStatusBlock(w, v) + "</div>";
         return (
+            (v.rereleaseOf ? '<p class="dim small" style="margin-bottom:6px">' + icon("undo", "sm") + " " + esc(T("au.v.rereleaseOf", { v: v.rereleaseOf })) + "</p>" : "") +
             '<div class="vx"><div><h4>' + esc(T("au.col.notes")) + "</h4>" + notes + "</div>" +
             "<div><h4>" + esc(T("au.v.checks")) + '</h4><div class="ladder-row">' + ladder(v) + "</div>" +
             '<h4 style="margin-top:10px">' + esc(T("au.v.changes")) + "</h4>" + changes + "</div>" +
@@ -747,6 +757,10 @@
         if (v.added && v.added.egress)
             v.added.egress.forEach(function (h) {
                 items.push('<li><span class="plus">+</span><span>' + esc(T("au.diff.host")) + ' <span class="mono ph">' + esc(h) + "</span></span></li>");
+            });
+        if (v.removed && v.removed.egress)
+            v.removed.egress.forEach(function (h) {
+                items.push('<li><span class="minus">−</span><span>' + esc(T("au.diff.hostRemoved")) + ' <span class="mono">' + esc(h) + "</span></span></li>");
             });
         if (v.permissions && v.permissions.indexOf("trading") >= 0) items.push('<li><span class="plus">+</span><span>' + esc(T("au.diff.perm")) + " «" + esc(scopeLabel("trading")) + "»</span></li>");
         if (!items.length) items.push('<li><span class="same">' + icon("check", "sm") + "</span><span>" + esc(T("au.diff.codeOnly")) + "</span></li>");
@@ -990,7 +1004,11 @@
             '<div class="cat-row">' + wicon(f) + '<div style="min-width:0"><div class="t">' + esc(f.name) + ' <span class="by">' + esc(D.author.name) + '</span></div><div class="d">' + esc(f.descRu) + "</div>" +
             (notes ? '<div class="wn" title="' + esc(notes) + '"><b>' + esc(T("au.uv.whatsNewIn", { v: v.v })) + "</b> " + ph(notes.split("\n")[0], true) + "</div>" : "") +
             '</div><button class="btn btn-sm btn-fetch" data-toast="au.toast.updated">' + esc(T("au.uv.update")) + "</button></div>" +
-            '<div class="cat-row">' + wicon(r) + '<div style="min-width:0"><div class="t">' + esc(r.name) + ' <span class="by">' + esc(D.author.name) + '</span></div><div class="d">' + esc(r.descRu) + '</div></div><span class="dim small">' + icon("check", "sm") + " " + esc(T("au.uv.installed")) + "</span></div>" +
+            (S.returned
+                ? '<div class="cat-row">' + wicon(r) + '<div style="min-width:0"><div class="t">' + esc(r.name) + ' <span class="by">' + esc(D.author.name) + '</span></div><div class="d">' + esc(r.descRu) + '</div></div><span class="dim small">' + icon("check", "sm") + " " + esc(T("au.uv.installed")) + "</span></div>"
+                : '<div class="cat-row">' + wicon(r) + '<div style="min-width:0"><div class="t">' + esc(r.name) + ' <span class="by">' + esc(D.author.name) + "</span></div>" +
+                  '<div class="d" style="color:var(--danger)">⛔ ' + ph(T("au.uv.revoked", { v: "1.1.0", reason: T("au.uv.revokedReason") }), true) + "</div></div>" +
+                  '<div class="row-actions"><button class="btn btn-sm btn-fetch" data-act="uv-return" title="' + esc(T("au.uv.returnHint")) + '">' + esc(T("au.uv.returnTo", { v: "1.0.0" })) + '</button><button class="btn btn-sm" data-toast="au.toast.later">' + esc(T("au.uv.remove")) + "</button></div></div>") +
             '<p class="hint" style="margin-top:8px">' + esc(T("au.uv.noNotesRule")) + "</p>" +
             "</div>" +
             '<div class="card listing"><div class="row-actions">' + wicon(f, true) + "<div><h2>" + esc(f.name) + '</h2><span class="dim small">' + esc(D.author.name) + " · " + esc(catLabel(f.category)) + "</span></div></div>" +
@@ -1062,18 +1080,20 @@
     }
 
     /* ---------- the release wizard ---------- */
-    function startWizard(id) {
+    function startWizard(id, from) {
         var w = find(id);
         var hi = highest(w);
         S.wiz = {
             id: id,
+            /* a rollback: this approved version goes out again under a new number — no folder, nothing to pack */
+            from: from || null,
             step: 1,
             /* "first" = nothing approved yet: the catalog choice applies and the notes are optional */
             first: !w.everApproved,
             choice: hi ? "patch" : "manifest",
             custom: "",
-            notesRu: "",
-            notesEn: "",
+            notesRu: from ? T("au.wiz.rb.notesRu", { v: from }) : "",
+            notesEn: from ? T("au.wiz.rb.notesEn", { v: from }) : "",
             packed: false,
             visibility: w.everApproved ? w.visibility || "catalog" : "catalog",
             error: null
@@ -1096,19 +1116,20 @@
     function renderWizard() {
         var z = S.wiz;
         var w = find(z.id);
-        var steps = ["au.wiz.s1", "au.wiz.s2", "au.wiz.s3", "au.wiz.s4"];
+        /* a rollback has no archive step: number, notes, send */
+        var steps = z.from ? [[1, "au.wiz.s1"], [2, "au.wiz.s2"], [4, "au.wiz.s4"]] : [[1, "au.wiz.s1"], [2, "au.wiz.s2"], [3, "au.wiz.s3"], [4, "au.wiz.s4"]];
         var stepper =
             '<ol class="stepper">' +
             steps
-                .map(function (k, i) {
-                    var n = i + 1;
-                    return "<li" + (n === z.step ? ' aria-current="step"' : n < z.step ? ' class="done"' : "") + ">" + esc(T(k)) + "</li>";
+                .map(function (s) {
+                    var n = s[0];
+                    return "<li" + (n === z.step ? ' aria-current="step"' : n < z.step ? ' class="done"' : "") + ">" + esc(T(s[1])) + "</li>";
                 })
                 .join("") +
             "</ol>";
         var body;
         var next = "";
-        var block = !linked(w);
+        var block = !z.from && !linked(w);
         if (block) {
             body =
                 '<div class="banner banner-warn">' + icon("warn") + '<div class="banner-body"><b>' + esc(mismatch(w) ? T("au.code.mismatch.title") : T("au.wiz.noCode.title")) + "</b> " + esc(T("au.wiz.noCode.body")) + "</div></div>" +
@@ -1127,11 +1148,16 @@
         }
         openDialog(
             "wide",
-            dlgHead(T("au.wiz.title", { name: w.name })) + stepper + '<div class="wiz-body">' + body + "</div>" +
+            dlgHead(z.from ? T("au.wiz.rb.title", { v: z.from, name: w.name }) : T("au.wiz.title", { name: w.name })) + stepper + '<div class="wiz-body">' + body + "</div>" +
                 '<div class="actions"><button class="btn btn-link" data-act="wiz-cancel" style="margin-right:auto">' + esc(T("au.cancel")) + "</button>" + next + "</div>"
         );
     }
     function wizSource(w) {
+        var z = S.wiz;
+        if (z && z.from) {
+            var src = versionOf(w, z.from);
+            return '<div class="src">' + icon("undo") + "<span>" + esc(T("au.wiz.rb.source", { v: z.from, date: src && src.decided ? fmtDate(src.decided) : "" })) + "</span></div>";
+        }
         return '<div class="src">' + icon("folder") + '<span class="path ph">' + esc(w.code.path) + '</span><span class="dim">· ' + esc(T("au.wiz.changed", { when: fmtDT(w.code.changedAt) })) + "</span></div>";
     }
     function wizStep1(w) {
@@ -1142,7 +1168,7 @@
             '<div class="facts">' +
             (c ? "<span>" + esc(T("au.wiz.lastApproved")) + " <b>" + esc(c.v) + "</b></span>" : "") +
             (hi && hi !== c ? "<span>" + esc(T("au.wiz.highest")) + " <b>" + esc(hi.v) + "</b> (" + esc(T("au.v." + (hi.state === "rejected" ? "declined" : hi.state === "refused" ? "refused" : hi.state === "pending" ? "pending" : hi.state === "withdrawn" ? "withdrawn" : "approved")).toLowerCase()) + ")</span>" : "") +
-            "<span>" + esc(T("au.wiz.inFolder")) + " <b>" + esc(w.code.manifestVersion) + "</b></span></div>";
+            (z.from ? "" : "<span>" + esc(T("au.wiz.inFolder")) + " <b>" + esc(w.code.manifestVersion) + "</b></span>") + "</div>";
         function radio(choice, v, title, sub) {
             return (
                 '<label class="radio"><input type="radio" name="wv" data-act="wiz-choice" value="' + choice + '"' + (z.choice === choice ? " checked" : "") + "/><div><b>" + (v ? '<span class="mono">' + esc(v) + "</span> · " : "") + esc(title) + "</b>" + (sub ? "<span>" + esc(sub) + "</span>" : "") +
@@ -1157,7 +1183,46 @@
         return (
             wizSource(w) + facts + '<div class="vis">' + radios + "</div>" +
             (err && (z.choice === "custom" && z.custom) ? '<p class="err" style="margin-top:6px">' + esc(err) + "</p>" : "") +
-            '<p class="hint" style="margin-top:8px">' + esc(T("au.wiz.v.written")) + "</p>"
+            '<p class="hint" style="margin-top:8px">' + esc(T(z.from ? "au.wiz.rb.written" : "au.wiz.v.written")) + "</p>"
+        );
+    }
+    function versionOf(w, v) {
+        for (var i = 0; i < w.versions.length; i++) if (w.versions[i].v === v) return w.versions[i];
+        return null;
+    }
+    /* what going back changes for users: the version's declaration against the served one */
+    function rollbackImpact(w) {
+        var z = S.wiz;
+        var src = versionOf(w, z.from) || {};
+        var live = w.live || { permissions: [], egress: [] };
+        var perms = src.permissions || live.permissions;
+        var hosts = src.egress || live.egress;
+        var items = [];
+        perms.filter(function (p) {
+            return live.permissions.indexOf(p) < 0;
+        }).forEach(function (p) {
+            items.push('<li><span class="plus">+</span><span>' + esc(T("au.diff.perm")) + " «" + esc(scopeLabel(p)) + "» — " + esc(T("au.diff.consentAgain")) + "</span></li>");
+        });
+        live.permissions.filter(function (p) {
+            return perms.indexOf(p) < 0;
+        }).forEach(function (p) {
+            items.push('<li><span class="minus">−</span><span>' + esc(T("au.diff.permRemoved")) + " «" + esc(scopeLabel(p)) + "»</span></li>");
+        });
+        hosts.filter(function (h) {
+            return live.egress.indexOf(h) < 0;
+        }).forEach(function (h) {
+            items.push('<li><span class="plus">+</span><span>' + esc(T("au.diff.host")) + ' <span class="mono ph">' + esc(h) + "</span> — " + esc(T("au.diff.consentAgain")) + "</span></li>");
+        });
+        live.egress.filter(function (h) {
+            return hosts.indexOf(h) < 0;
+        }).forEach(function (h) {
+            items.push('<li><span class="minus">−</span><span>' + esc(T("au.diff.hostRemoved")) + ' <span class="mono">' + esc(h) + "</span></span></li>");
+        });
+        if (!items.length) items.push('<li><span class="same">' + icon("check", "sm") + "</span><span>" + esc(T("au.diff.codeOnly")) + "</span></li>");
+        var pending = pendingOf(w);
+        return (
+            '<div class="impact"><h4>' + esc(T("au.wiz.impact.title")) + '</h4><ul class="chg">' + items.join("") + '</ul><p class="hint" style="margin-top:6px">' + esc(T("au.wiz.rb.verdict")) + "</p></div>" +
+            (pending ? '<div class="banner banner-warn" style="margin-top:8px">' + icon("warn") + '<div class="banner-body">' + esc(T("au.wiz.rb.pendingAbove", { v: pending.v })) + "</div></div>" : "")
         );
     }
     function wizNotesError(w) {
@@ -1259,7 +1324,7 @@
             '<div class="vis">' + opt("catalog", T("au.vis.catalog")) + opt("link", T("au.vis.link")) + "</div>" +
             (z.first ? '<p class="hint" style="margin-top:6px">' + esc(T("au.wiz.vis.firstReview")) + "</p>" : "");
         var err = z.error ? '<div class="banner banner-error" style="margin-top:10px">' + icon("warn") + '<div class="banner-body">' + esc(z.error) + "</div></div>" : "";
-        return sum + vis + err;
+        return sum + (z.from ? '<div style="margin-top:10px">' + rollbackImpact(w) + "</div>" : "") + vis + err;
     }
     function wizPack() {
         var z = S.wiz;
@@ -1284,14 +1349,22 @@
         }
         var v = wizVersion(w);
         var nv = { v: v, state: "checking", progress: 0, submitted: D.NOW, notesRu: z.notesRu.trim(), notesEn: z.notesEn.trim(), thread: [], ph: true };
-        if (!z.first && w.live) {
+        if (z.from) {
+            nv.rereleaseOf = z.from;
+            var src = versionOf(w, z.from) || {};
+            var gone = (w.live ? w.live.egress : []).filter(function (h) {
+                return src.egress && src.egress.indexOf(h) < 0;
+            });
+            if (gone.length) nv.removed = { egress: gone };
+        } else if (!z.first && w.live) {
             var add = w.code.egress.filter(function (h) {
                 return w.live.egress.indexOf(h) < 0;
             });
             if (add.length) nv.added = { egress: add };
         }
         w.versions.unshift(nv);
-        w.code.manifestVersion = v;
+        /* a rollback never touches the folder */
+        if (!z.from) w.code.manifestVersion = v;
         if (!w.share) w.share = "Nw3Qe8Rt1Yu6Io9Pa4Sd7Fg2Hj5Kl0Zx3Cv8Bn1Mq6W";
         var vis = z.visibility;
         var first = z.first;
@@ -1480,8 +1553,16 @@
             case "wiz-next":
                 wizNext();
                 break;
+            case "rollback":
+                go("#/w/" + encodeURIComponent(parts[0]) + "/versions/rollback/" + encodeURIComponent(parts[1]));
+                break;
+            case "uv-return":
+                window.NEST.toast(T("au.toast.returned", { v: "1.0.0" }));
+                S.returned = true;
+                render();
+                break;
             case "wiz-back":
-                S.wiz.step--;
+                S.wiz.step = S.wiz.from && S.wiz.step === 4 ? 2 : S.wiz.step - 1;
                 S.wiz.error = null;
                 renderWizard();
                 break;
@@ -1571,7 +1652,7 @@
     }
     function wizNext() {
         var z = S.wiz;
-        z.step++;
+        z.step = z.from && z.step === 2 ? 4 : z.step + 1;
         z.error = null;
         if (z.step === 3) z.packed = false;
         renderWizard();

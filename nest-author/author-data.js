@@ -114,6 +114,19 @@ window.AUTHOR_DATA = (function () {
                     notesRu: "",
                     notesEn: "",
                     thread: []
+                },
+                {
+                    /* invented: an earlier approved version, so «Откатиться» has somewhere to go */
+                    v: "0.9.0",
+                    state: "approved",
+                    ph: true,
+                    submitted: ago(52),
+                    decided: ago(50),
+                    notesRu: "",
+                    notesEn: "",
+                    permissions: ["notifications", "signalLevels", "storage"],
+                    egress: ["fstream.binance.com", "ws.okx.com:8443", "www.okx.com", "fx-ws.gateio.ws", "api.gateio.ws", "stream.bybit.com", "api.bybit.com"],
+                    thread: []
                 }
             ],
             /* deliberately no stats: absent renders as nothing, never as zero */
