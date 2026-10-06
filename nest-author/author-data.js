@@ -385,6 +385,28 @@ window.AUTHOR_DATA = (function () {
         widgets: widgets,
         /* "code first": a dev folder loaded in the terminal that Nest has never heard of */
         local: [{ key: "my-orderflow", path: "D:\\dev\\my-orderflow", manifestId: "my-orderflow", manifestVersion: "0.1.0", changedAt: ago(0, 1), hot: true }],
+        /* The user's side («глазами пользователя»): the user has Фандинг-монитор 1.0.0, and the
+           pending 1.1.0 is drawn as approved today. `between` is the "several versions behind"
+           example: two more approved versions between 1.0.0 and 1.1.0, one of them revoked. All
+           invented. */
+        userView: {
+            installed: "1.0.0",
+            between: [
+                {
+                    v: "1.0.2",
+                    released: ago(12),
+                    notesRu: "Обратный отсчёт до расчёта виден прямо в строке биржи.\nСортировка по экстремальности учитывает знак ставки.",
+                    notesEn: "The settlement countdown is right in the venue's row.\nSorting by extremity respects the rate's sign."
+                },
+                {
+                    v: "1.0.1",
+                    released: ago(26),
+                    revoked: true,
+                    notesRu: "Исправлен пересчёт ставки в годовые для Kraken.",
+                    notesEn: "Fixed the annualized rate for Kraken."
+                }
+            ]
+        },
         notifications: [
             { kind: "warn", text: "Мини-график сделок: версия 1.0.0 ждёт дольше обычного", at: ago(3), href: "#/w/71f0c3d8-2e9a-4b6c-8f17-5a4d0e9b3c21/versions" },
             { kind: "danger", text: "Алерты объёма: версия 1.0.0 отклонена модератором", at: ago(2, 4), href: "#/w/3c9a6f10-8b2d-4e71-b5f4-91d0e7a2c468/overview" },

@@ -27,7 +27,10 @@
         keyShown: false,
         created: null, /* id of a widget created a moment ago — the page greets it once */
         wiz: null,
-        dlg: null
+        dlg: null,
+        uvCase: "one", /* the user's side: one version after theirs, or the three-version example */
+        uvUpdated: false,
+        uvHistory: false
     };
     var emptyWidgets = [];
 
@@ -992,31 +995,101 @@
         return '<div class="onboard"><div class="card notice-danger" style="grid-column:1/-1;max-width:640px"><h2 class="sec">' + esc(T("au.unreadable.heading")) + '</h2><p class="dim">' + esc(T("au.unreadable.body")) + "</p></div></div>";
     }
 
-    /* ---------- the user's side: the Каталог tab (S15) ---------- */
+    /* ---------- the user's side: the Каталог and Мои виджеты tabs ---------- */
+    /* The approved versions users can read, newest first. The pending update is drawn as approved
+       today, and the "several versions behind" example adds the invented versions between. */
+    function uvHistory(f, v) {
+        var list = [];
+        if (v && v.state !== "approved") list.push({ v: v.v, released: D.NOW, notesRu: v.notesRu, ph: true });
+        if (S.uvCase === "three") {
+            D.userView.between.forEach(function (x) {
+                list.push({ v: x.v, released: x.released, notesRu: x.notesRu, revoked: x.revoked, ph: true });
+            });
+        }
+        f.versions.forEach(function (x) {
+            if (x.state === "approved") list.push({ v: x.v, released: x.decided, notesRu: x.notesRu, ph: x.ph });
+        });
+        return list.sort(function (a, b) {
+            return cmpV(b.v, a.v);
+        });
+    }
+    /* A heading whose date is invented: the key's {date} is swapped for a dashed span after escaping. */
+    function uvDated(key, vars, ms) {
+        vars.date = "\u0001";
+        return esc(T(key, vars)).replace("\u0001", ph(fmtDate(ms), true));
+    }
+    /* «v1.0.2 · 22.09.2026», a «отозвана» chip, then the notes. The page block clamps them to four
+       lines with the full text in the tooltip; the history shows them whole. */
+    function uvItem(x, installed, clamp) {
+        var notes = x.notesRu || "";
+        return (
+            '<div class="wn-item"><div class="ln"><span class="v">v' + esc(x.v) + "</span> · " + ph(fmtDate(x.released), true) +
+            (installed && x.v === installed ? '<span class="chip chip-accent">' + esc(T("au.uv.history.installed")) + "</span>" : "") +
+            (x.revoked ? '<span class="chip chip-danger" title="' + esc(T("au.uv.history.revokedTip")) + '">' + esc(T("au.uv.history.revoked")) + "</span>" : "") +
+            "</div>" +
+            (notes ? '<div class="quote' + (clamp ? " clamp4" : "") + (x.ph ? " ph" : "") + '"' + (clamp ? ' title="' + esc(notes) + '"' : "") + ">" + esc(notes) + "</div>" : "") +
+            "</div>"
+        );
+    }
     function renderUserView() {
         var f = find("funding-monitor") || D.widgets[0];
         var r = find("liquidation-radar") || D.widgets[1];
         var v = pendingOf(f) || latest(f);
         var notes = (v && v.notesRu) || "";
+        var history = uvHistory(f, v);
+        var served = history[0];
+        var installed = S.uvUpdated ? served.v : D.userView.installed;
+        var waiting = cmpV(served.v, installed) > 0;
+        var since = history.filter(function (x) {
+            return cmpV(x.v, installed) > 0;
+        });
+        var block = waiting
+            ? '<div class="wn-block"><h3>' + esc(T("au.uv.since", { v: installed })) + "</h3>" + since.map(function (x) {
+                  return uvItem(x, null, true);
+              }).join("") + "</div>"
+            : served.notesRu
+              ? '<div class="wn-block"><h3>' + uvDated("au.uv.dated", { v: served.v }, served.released) + '</h3><div class="quote clamp4 ph" title="' + esc(served.notesRu) + '">' + esc(served.notesRu) + "</div></div>"
+              : "";
+        var historyHtml =
+            '<button type="button" class="btn btn-sm btn-link uv-hist-toggle" data-act="uv-history">' + icon("clock", "sm") + " " + esc(T(S.uvHistory ? "au.uv.history.hide" : "au.uv.history.show")) + "</button>" +
+            (S.uvHistory ? '<div class="uv-hist">' + history.map(function (x) {
+                return uvItem(x, installed, false);
+            }).join("") + "</div>" : "");
+        var updateBtn = function (cls, label) {
+            return '<button class="btn ' + cls + ' btn-fetch" data-act="uv-update">' + esc(label) + "</button>";
+        };
         return (
             '<div class="uv"><div>' +
             '<div class="banner banner-info">' + icon("eye") + '<div class="banner-body">' + esc(T("au.uv.banner", { v: v ? v.v : "" })) + ' <a href="#" data-act="tab" data-tab="author">' + esc(T("au.uv.back")) + "</a></div></div>" +
+            '<div class="uv-case"><span class="dim small">' + esc(T("au.uv.case.label", { v: D.userView.installed })) + '</span><div class="seg">' +
+            '<button type="button" data-act="uv-case" data-v="one" aria-pressed="' + (S.uvCase !== "three") + '">' + esc(T("au.uv.case.one")) + "</button>" +
+            '<button type="button" data-act="uv-case" data-v="three" aria-pressed="' + (S.uvCase === "three") + '">' + esc(T("au.uv.case.three")) + "</button></div></div>" +
+            '<h3 class="uv-sub">' + esc(T("au.uv.tab.catalog")) + "</h3>" +
             '<div class="cat-row">' + wicon(f) + '<div style="min-width:0"><div class="t">' + esc(f.name) + ' <span class="by">' + esc(D.author.name) + '</span></div><div class="d">' + esc(f.descRu) + "</div>" +
-            (notes ? '<div class="wn" title="' + esc(notes) + '"><b>' + esc(T("au.uv.whatsNewIn", { v: v.v })) + "</b> " + ph(notes.split("\n")[0], true) + "</div>" : "") +
-            '</div><button class="btn btn-sm btn-fetch" data-toast="au.toast.updated">' + esc(T("au.uv.update")) + "</button></div>" +
+            (notes && waiting ? '<div class="wn" title="' + esc(notes) + '"><b>' + esc(T("au.uv.whatsNewIn", { v: v.v })) + ":</b> " + ph(notes.split("\n")[0], true) + "</div>" : "") +
+            "</div>" +
+            (waiting ? updateBtn("btn-sm", T("au.uv.update")) : '<span class="dim small">' + icon("check", "sm") + " " + esc(T("au.uv.installed")) + "</span>") +
+            "</div>" +
             (S.returned
                 ? '<div class="cat-row">' + wicon(r) + '<div style="min-width:0"><div class="t">' + esc(r.name) + ' <span class="by">' + esc(D.author.name) + '</span></div><div class="d">' + esc(r.descRu) + '</div></div><span class="dim small">' + icon("check", "sm") + " " + esc(T("au.uv.installed")) + "</span></div>"
                 : '<div class="cat-row">' + wicon(r) + '<div style="min-width:0"><div class="t">' + esc(r.name) + ' <span class="by">' + esc(D.author.name) + "</span></div>" +
                   '<div class="d" style="color:var(--danger)">⛔ ' + ph(T("au.uv.revoked", { v: "1.1.0", reason: T("au.uv.revokedReason") }), true) + "</div></div>" +
                   '<div class="row-actions"><button class="btn btn-sm btn-fetch" data-act="uv-return" title="' + esc(T("au.uv.returnHint")) + '">' + esc(T("au.uv.returnTo", { v: "1.0.0" })) + '</button><button class="btn btn-sm" data-toast="au.toast.later">' + esc(T("au.uv.remove")) + "</button></div></div>") +
-            '<p class="hint" style="margin-top:8px">' + esc(T("au.uv.noNotesRule")) + "</p>" +
+            /* «Мои виджеты»: the installed row offers the update itself, with the same one-line teaser */
+            '<h3 class="uv-sub">' + esc(T("au.uv.tab.myWidgets")) + "</h3>" +
+            '<div class="cat-row my-row">' + wicon(f) + '<div style="min-width:0"><div class="t">' + esc(f.name) + ' <span class="by mono">' + esc(installed) + "</span></div>" +
+            (waiting && notes ? '<div class="wn" title="' + esc(notes) + '"><b>' + esc(T("au.uv.whatsNewIn", { v: served.v })) + ":</b> " + ph(notes.split("\n")[0], true) + "</div>" : '<div class="d">' + esc(T("au.uv.running")) + "</div>") +
+            '</div><div class="row-actions">' + (waiting ? updateBtn("btn-sm", T("au.uv.updateTo", { v: served.v })) : "") +
+            '<button class="btn btn-sm btn-icon" data-toast="au.toast.later" aria-label="⋯">⋯</button><span class="uv-switch" aria-hidden="true"></span></div></div>' +
+            '<p class="hint" style="margin-top:8px">' + esc(T("au.uv.noNotesRule")) + " " + esc(T("au.uv.sinceRule")) + "</p>" +
             "</div>" +
-            '<div class="card listing"><div class="row-actions">' + wicon(f, true) + "<div><h2>" + esc(f.name) + '</h2><span class="dim small">' + esc(D.author.name) + " · " + esc(catLabel(f.category)) + "</span></div></div>" +
+            '<div class="card listing"><div class="row-actions">' + wicon(f, true) + "<div><h2>" + esc(f.name) + ' <span class="by mono">' + esc(served.v) + '</span></h2><span class="dim small">' + esc(D.author.name) + " · " + esc(catLabel(f.category)) + "</span></div></div>" +
             '<p style="margin-top:8px">' + esc(f.descRu) + "</p>" +
-            (notes ? '<div class="wn-block"><h3>' + esc(T("au.uv.whatsNewIn", { v: v.v })) + '</h3><div class="quote ph">' + esc(notes) + "</div></div>" : "") +
-            '<div class="impact" style="margin-top:10px"><h4>' + icon("shield", "sm") + " " + esc(T("au.uv.consent.title")) + '</h4><p class="dim small">' + esc(T("au.uv.consent.body", { host: "www.okx.com" })) + "</p></div>" +
-            '<div class="row-actions" style="margin-top:12px"><button class="btn btn-fetch" data-toast="au.toast.updated">' + esc(T("au.uv.updateTo", { v: v ? v.v : "" })) + "</button></div></div>" +
-            "</div>"
+            block +
+            historyHtml +
+            (waiting ? '<div class="impact" style="margin-top:10px"><h4>' + icon("shield", "sm") + " " + esc(T("au.uv.consent.title")) + '</h4><p class="dim small">' + esc(T("au.uv.consent.body", { host: "www.okx.com" })) + "</p></div>" : "") +
+            (waiting ? '<div class="row-actions" style="margin-top:12px">' + updateBtn("", T("au.uv.updateTo", { v: served.v })) + "</div>" : "") +
+            "</div></div>"
         );
     }
 
@@ -1559,6 +1632,20 @@
             case "uv-return":
                 window.NEST.toast(T("au.toast.returned", { v: "1.0.0" }));
                 S.returned = true;
+                render();
+                break;
+            case "uv-update":
+                window.NEST.toast(T("au.toast.updated"));
+                S.uvUpdated = true;
+                render();
+                break;
+            case "uv-case":
+                S.uvCase = el.getAttribute("data-v");
+                S.uvUpdated = false;
+                render();
+                break;
+            case "uv-history":
+                S.uvHistory = !S.uvHistory;
                 render();
                 break;
             case "wiz-back":
