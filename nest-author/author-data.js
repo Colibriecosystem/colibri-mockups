@@ -375,12 +375,36 @@ window.AUTHOR_DATA = (function () {
         registry: "https://nest.colibritech.xyz",
         author: {
             name: "Colibri",
-            id: "c7d2a9e4-3b1f-4f0e-9a52-6e81b0d4f2a7",
+            /* the key has the real shape: 43 base64url characters. Invented. */
+            id: "q3V9k1Lx7Rz0TfA2mWcN8pYh4sJdG6uEbK5oXiQ1vZw",
             email: "nest-team@example.com",
             youtube: "",
             telegram: "https://t.me/colibri_terminal",
             contactTg: "@colibri_team",
-            sourceCode: ""
+            sourceCode: "",
+            /* Keys and co-maintainers. Everything below is invented. A key with no member is the
+               owner's; «этот ПК» is k1 for the owner and k3 for the co-maintainer Анна. */
+            machine: "DESKTOP-4F7K2",
+            keys: [
+                { id: "k1", label: "Рабочий ПК", member: null, origin: "created", added: ago(41), lastUsed: ago(0) },
+                { id: "k2", label: "Ноутбук", member: null, origin: "pairing", added: ago(12), lastUsed: ago(3) },
+                { id: "k3", label: "DESKTOP-7Q2M", member: "m1", origin: "invitation", added: ago(5), lastUsed: ago(1) }
+            ],
+            members: [
+                { id: "m1", name: "Анна", status: "active", added: ago(5) },
+                { id: "m2", name: "Давид", status: "invited", expires: NOW + 5 * DAY }
+            ],
+            recoverySetAt: null,
+            emailVerified: false,
+            /* The codes a dialog shows, Crockford base32 in groups of five. Invented. */
+            /* Анна's key on her PC, for the co-maintainer view. Invented. */
+            maintKey: "Hn2mK8pR4vT0yW6qZ1cX9bF3jL5sD7gA0eU2iO4kM8n",
+            codes: {
+                pairing: "7KQ2M-H9XRT-4VN8C-WD3PJ",
+                invitation: "M4T9X-2RKQH-8CVNW-J6PD3",
+                recovery: "K7M2Q-9XRT4-HV8NC-3WDPJ-6FB1G-ZE5YA",
+                email: "B3N7R-5TQ2X-K8WMH-9CVDJ"
+            }
         },
         widgets: widgets,
         /* "code first": a dev folder loaded in the terminal that Nest has never heard of */

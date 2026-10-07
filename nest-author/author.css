@@ -1433,3 +1433,58 @@ table.data.vt {
     color: inherit;
     font-size: inherit;
 }
+
+/* ---------- keys, recovery, co-maintainers (profile page) ---------- */
+/* a card heading with its one action on the right */
+.sec-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 4px;
+}
+.sec-row .sec {
+    margin: 0;
+}
+h3.sub {
+    font-size: var(--fs-sm);
+    font-weight: 600;
+    margin: 14px 0 8px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+}
+table.keys td {
+    vertical-align: top;
+}
+/* a code the author copies to another PC or person: big, mono, wraps on the dashes */
+.code-box {
+    flex: 1;
+    min-width: 0;
+    font-family: var(--font-mono);
+    font-size: 15px;
+    letter-spacing: 0.04em;
+    padding: 8px 10px;
+    border-radius: var(--r);
+    background: var(--surface);
+    border: 1px solid var(--border-2);
+    overflow-wrap: anywhere;
+}
+/* review chrome inside a page: example inputs, never part of the design */
+.mock-examples {
+    margin-top: 8px;
+    padding: 4px 8px;
+    border: 1px dashed var(--tint-warn-border);
+    border-radius: var(--r);
+    font-size: var(--fs-xs, 11px);
+    color: var(--warn);
+}
+.mock-examples .btn-link {
+    padding: 0 2px;
+    min-height: 0;
+    font-size: inherit;
+}
+.banner .banner-body + .btn {
+    align-self: center;
+    flex-shrink: 0;
+}

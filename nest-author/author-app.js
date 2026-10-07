@@ -7,15 +7,16 @@
      #/w/<id>/<section>      a widget page: overview · versions · listing · code · access · stats
      #/w/<id>/<section>/release   the same page with the release wizard open
      #/local/<key>           a dev folder Nest has never heard of ("code first")
-     #/profile               profile and author ID
-   Mock-bar params: ?author=none|empty|yes|unreadable|offline  ?scope=first|full  ?vw=800|1024|1280 */
+     #/profile               profile, this author's keys, recovery and co-maintainers
+   Mock-bar params: ?author=none|empty|yes|maintainer|unreadable|offline  ?scope=first|full  ?vw=800|1024|1280
+   "maintainer" is the same author seen from a co-maintainer's PC: owner-only actions are disabled. */
 (function () {
     "use strict";
 
     var D = window.AUTHOR_DATA;
     var html = document.documentElement;
     var params = new URLSearchParams(location.search);
-    var AUTHOR_STATES = ["none", "empty", "yes", "unreadable", "offline"];
+    var AUTHOR_STATES = ["none", "empty", "yes", "maintainer", "unreadable", "offline"];
     var S = {
         author: AUTHOR_STATES.indexOf(params.get("author")) >= 0 ? params.get("author") : "yes",
         scope: params.get("scope") === "first" ? "first" : "full",
@@ -30,9 +31,55 @@
         dlg: null,
         uvCase: "one", /* the user's side: one version after theirs, or the three-version example */
         uvUpdated: false,
-        uvHistory: false
+        uvHistory: false,
+        code: null, /* the code dialog on screen: { kind, code, until } */
+        redeem: { value: "", error: null, emailSent: false }, /* the «ключ или код» box */
+        recoveryUsed: false /* the author just came back with the recovery code */
     };
     var emptyWidgets = [];
+
+    /* a co-maintainer's PC: the author is the same, owner-only actions are not theirs */
+    function isMaint() {
+        return S.author === "maintainer";
+    }
+    function ownerOnlyAttrs() {
+        return ' disabled title="' + esc(T("au.ownerOnly")) + '"';
+    }
+    /* the key this PC holds: the owner's work PC, or Анна's */
+    function thisKeyId() {
+        if (isMaint()) return "k3";
+        return S.thisKey || "k1";
+    }
+    function keyById(id) {
+        return D.author.keys.filter(function (k) {
+            return k.id === id;
+        })[0];
+    }
+    function memberById(id) {
+        return D.author.members.filter(function (m) {
+            return m.id === id;
+        })[0];
+    }
+    function liveKeys() {
+        return D.author.keys.filter(function (k) {
+            return !k.revoked && (!isMaint() || k.member === "m1");
+        });
+    }
+    function liveOwnerKeys() {
+        return D.author.keys.filter(function (k) {
+            return !k.revoked && !k.member;
+        });
+    }
+    function memberName(id) {
+        var m = D.author.members.filter(function (x) {
+            return x.id === id;
+        })[0];
+        return m ? m.name : "";
+    }
+    function mmss(ms) {
+        var s = Math.max(0, Math.round(ms / 1000));
+        return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+    }
 
     function T(key, vars) {
         return window.NEST.t(key, vars);
@@ -281,7 +328,7 @@
         return (
             '<div class="ws-bar">' +
             '<span class="avatar">' + esc(a.name.charAt(0)) + "</span>" +
-            '<div class="who"><b>' + esc(a.name) + "</b><span>" + esc(T("au.bar.idHere")) + "</span></div>" +
+            '<div class="who"><b>' + esc(a.name) + (isMaint() ? ' <span class="chip chip-info">' + esc(T("au.maint.badge")) + "</span>" : "") + "</b><span>" + esc(isMaint() ? T("au.maint.who", { name: memberName("m1") }) : T("au.bar.idHere")) + "</span></div>" +
             '<span class="grow"></span>' +
             '<button class="btn btn-primary btn-sm" data-act="new-widget">' + icon("plus") + esc(T("au.newWidget")) + "</button>" +
             bell +
@@ -400,7 +447,7 @@
         if (p === "withdrawn") {
             n.title = T("au.next.withdrawn.title");
             n.body = T("au.next.withdrawn.body");
-            n.actions = '<button class="btn" data-act="restore" data-id="' + esc(w.id) + '">' + esc(T("au.restore")) + "</button>";
+            n.actions = '<button class="btn" data-act="restore" data-id="' + esc(w.id) + '"' + (isMaint() ? ownerOnlyAttrs() : "") + ">" + esc(T("au.restore")) + "</button>";
             n.short = T("au.next.withdrawn.short");
             return n;
         }
@@ -508,8 +555,8 @@
         var menu =
             '<details class="menu"><summary class="btn btn-icon" aria-label="' + esc(T("au.more")) + '">' + icon("more") + '</summary><div class="menu-list">' +
             (linked(w) ? '<button data-toast="au.toast.openedPanel">' + icon("panel") + esc(T("au.openPanel")) + '</button><button data-toast="au.toast.openedWindow">' + icon("window") + esc(T("au.openWindow")) + "</button><hr/>" : "") +
-            (w.state === "withdrawn" ? '<button data-act="restore" data-id="' + esc(w.id) + '">' + icon("undo") + esc(T("au.restore")) + "</button>" : w.state !== "takendown" && w.state !== "draft" ? '<button data-act="withdraw" data-id="' + esc(w.id) + '">' + icon("archive") + esc(T("au.withdraw")) + "</button>" : "") +
-            (!w.everApproved ? '<button class="danger" data-act="delete" data-id="' + esc(w.id) + '">' + icon("trash") + esc(T("au.delete")) + "</button>" : "") +
+            (w.state === "withdrawn" ? '<button data-act="restore" data-id="' + esc(w.id) + '"' + (isMaint() ? ownerOnlyAttrs() : "") + ">" + icon("undo") + esc(T("au.restore")) + "</button>" : w.state !== "takendown" && w.state !== "draft" ? '<button data-act="withdraw" data-id="' + esc(w.id) + '"' + (isMaint() ? ownerOnlyAttrs() : "") + ">" + icon("archive") + esc(T("au.withdraw")) + "</button>" : "") +
+            (!w.everApproved ? '<button class="danger" data-act="delete" data-id="' + esc(w.id) + '"' + (isMaint() ? ownerOnlyAttrs() : "") + ">" + icon("trash") + esc(T("au.delete")) + "</button>" : "") +
             "</div></details>";
         var head =
             '<a class="btn btn-link btn-sm back-link" href="#/">' + icon("arrow-left") + esc(T("au.back")) + "</a>" +
@@ -858,8 +905,8 @@
         out += '<div class="card"><h2 class="sec">' + esc(T("au.access.visibility")) + "</h2>" + vis + "</div>";
 
         var life = "";
-        if (w.state === "withdrawn") life += row(T("au.restore"), T("au.access.restoreBody"), '<button class="btn" data-act="restore" data-id="' + esc(w.id) + '">' + icon("undo") + esc(T("au.restore")) + "</button>");
-        else if (w.state !== "takendown" && w.everApproved) life += row(T("au.withdraw"), T("au.withdraw.tip"), '<button class="btn" data-act="withdraw" data-id="' + esc(w.id) + '">' + icon("archive") + esc(T("au.withdraw")) + "</button>");
+        if (w.state === "withdrawn") life += row(T("au.restore"), T("au.access.restoreBody"), '<button class="btn" data-act="restore" data-id="' + esc(w.id) + '"' + (isMaint() ? ownerOnlyAttrs() : "") + ">" + icon("undo") + esc(T("au.restore")) + "</button>");
+        else if (w.state !== "takendown" && w.everApproved) life += row(T("au.withdraw"), T("au.withdraw.tip"), '<button class="btn" data-act="withdraw" data-id="' + esc(w.id) + '"' + (isMaint() ? ownerOnlyAttrs() : "") + ">" + icon("archive") + esc(T("au.withdraw")) + "</button>");
         if (w.everApproved) {
             life += '<div class="later">' + row(T("au.access.deprecate") + " ", T("au.access.deprecateBody"), '<button class="btn" data-toast="au.toast.later">' + esc(T("au.access.deprecateAction")) + "</button>", true) + "</div>";
             life += '<div class="later">' + row(T("au.access.transfer") + " ", T("au.access.transferBody"), '<button class="btn" data-toast="au.toast.later">' + icon("transfer") + esc(T("au.access.transferAction")) + "</button>", true) + "</div>";
@@ -869,7 +916,7 @@
             '<div class="card danger-zone"><h2 class="sec">' + esc(T("au.delete")) + "</h2>" +
             (w.everApproved
                 ? '<p class="dim">' + esc(T("au.access.cantDelete")) + "</p>"
-                : '<div class="row-actions" style="justify-content:space-between"><p class="dim" style="flex:1;min-width:240px">' + esc(T("au.access.deleteBody")) + '</p><button class="btn btn-danger" data-act="delete" data-id="' + esc(w.id) + '">' + icon("trash") + esc(T("au.delete")) + "</button></div>") +
+                : '<div class="row-actions" style="justify-content:space-between"><p class="dim" style="flex:1;min-width:240px">' + esc(T("au.access.deleteBody")) + '</p><button class="btn btn-danger" data-act="delete" data-id="' + esc(w.id) + '"' + (isMaint() ? ownerOnlyAttrs() : "") + ">" + icon("trash") + esc(T("au.delete")) + "</button></div>") +
             "</div>";
         return out;
     }
@@ -926,11 +973,13 @@
         );
     }
 
-    /* ---------- profile and author ID ---------- */
-    function profileFields(a) {
+    /* ---------- profile, keys, recovery, co-maintainers ---------- */
+    /* A co-maintainer reads the public fields only: the profile is the owner's, and the private
+       group (e-mail, contact, source) is not theirs to see. */
+    function profileFields(a, readOnly) {
         a = a || {};
         function f(id, label, hint, val, mono) {
-            return '<label class="field" style="margin-bottom:8px"><span>' + esc(label) + '</span><input class="input' + (mono ? " mono" : "") + '" id="' + id + '" value="' + esc(val || "") + '"/><span class="hint">' + esc(hint) + "</span></label>";
+            return '<label class="field" style="margin-bottom:8px"><span>' + esc(label) + '</span><input class="input' + (mono ? " mono" : "") + '" id="' + id + '" value="' + esc(val || "") + '"' + (readOnly ? " readonly" : "") + '/><span class="hint">' + esc(hint) + "</span></label>";
         }
         return (
             '<div class="fieldgroup"><div class="gh"><b>' + esc(T("au.p.public")) + "</b><span>" + esc(T("au.p.publicHint")) + "</span></div>" +
@@ -938,29 +987,144 @@
             f("p-yt", T("au.p.youtube"), T("au.p.youtubeHint"), a.youtube, true) +
             f("p-tg", T("au.p.telegram"), T("au.p.telegramHint"), a.telegram, true) +
             "</div>" +
-            '<div class="fieldgroup"><div class="gh"><b>' + esc(T("au.p.private")) + "</b><span>" + esc(T("au.p.privateHint")) + "</span></div>" +
-            f("p-email", T("au.p.email"), T("au.p.emailHint"), a.email) +
-            f("p-contact", T("au.p.contact"), T("au.p.contactHint"), a.contactTg, true) +
-            f("p-src", T("au.p.source"), T("au.p.sourceHint"), a.sourceCode, true) +
-            "</div>"
+            (readOnly
+                ? ""
+                : '<div class="fieldgroup"><div class="gh"><b>' + esc(T("au.p.private")) + "</b><span>" + esc(T("au.p.privateHint")) + "</span></div>" +
+                  f("p-email", T("au.p.email"), T("au.p.emailHint"), a.email) +
+                  f("p-contact", T("au.p.contact"), T("au.p.contactHint"), a.contactTg, true) +
+                  f("p-src", T("au.p.source"), T("au.p.sourceHint"), a.sourceCode, true) +
+                  "</div>")
+        );
+    }
+    function thisKey() {
+        return isMaint() ? D.author.maintKey : D.author.id;
+    }
+    function renderKeysTable() {
+        var lastOwner = liveOwnerKeys().length <= 1;
+        var rows = liveKeys()
+            .map(function (k) {
+                var mine = k.id === thisKeyId();
+                var whose = k.member ? '<span class="ph">' + esc(memberName(k.member)) + "</span>" : esc(T("au.keys.owner"));
+                var locked = !k.member && lastOwner;
+                var revoke = '<button class="btn btn-sm" data-act="revoke-key" data-id="' + esc(k.id) + '"' + (locked ? ' disabled title="' + esc(T("au.keys.lastOwner")) + '"' : "") + ">" + esc(T("au.keys.revoke")) + "</button>";
+                return (
+                    "<tr>" +
+                    '<td><div><span class="ph">' + esc(k.label) + "</span>" + (mine ? ' <span class="chip chip-ok">' + esc(T("au.keys.thisPc")) + "</span>" : "") + '</div><div class="faint small">' + esc(T("au.keys.origin." + k.origin)) + "</div></td>" +
+                    "<td>" + whose + "</td>" +
+                    '<td class="small"><span class="ph">' + fmtDate(k.added) + "</span></td>" +
+                    '<td class="small"><span class="ph">' + fmtDate(k.lastUsed) + "</span></td>" +
+                    '<td class="num"><div class="row-actions" style="justify-content:flex-end;flex-wrap:nowrap"><button class="btn btn-icon btn-sm" data-act="rename-key" data-id="' + esc(k.id) + '" title="' + esc(T("au.keys.rename")) + '" aria-label="' + esc(T("au.keys.rename")) + '">' + icon("pencil") + "</button>" + revoke + "</div></td>" +
+                    "</tr>"
+                );
+            })
+            .join("");
+        return (
+            '<div class="table-scroll"><table class="data dash keys"><thead><tr>' +
+            "<th>" + esc(T("au.keys.col.key")) + "</th><th>" + esc(T("au.keys.col.whose")) + "</th><th>" + esc(T("au.keys.col.added")) + "</th><th>" + esc(T("au.keys.col.lastUsed")) + "</th><th></th>" +
+            "</tr></thead><tbody>" + rows + "</tbody></table></div>"
+        );
+    }
+    function renderRecovery() {
+        var a = D.author;
+        var code = a.recoverySetAt
+            ? '<div class="row-actions" style="justify-content:space-between"><p class="dim" style="flex:1;min-width:240px">' + esc(T("au.recovery.setOn", { date: fmtDate(a.recoverySetAt) })) + '</p><button class="btn" data-act="recovery">' + esc(T("au.recovery.replace")) + "</button></div>"
+            : '<div class="banner banner-warn" style="margin:0">' + icon("warn") + '<div class="banner-body">' + esc(T("au.recovery.none")) + '</div><button class="btn btn-sm" data-act="recovery">' + icon("shield") + esc(T("au.p.recovery")) + "</button></div>";
+        var email =
+            '<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">' +
+            '<div class="row-actions" style="justify-content:space-between"><div style="flex:1;min-width:240px"><b>' + esc(T("au.email.row", { email: a.email })) + "</b> " +
+            (a.emailVerified ? '<span class="chip chip-ok">' + esc(T("au.email.verified")) + "</span>" : '<span class="chip chip-warn">' + esc(T("au.email.unverified")) + "</span>") +
+            '<p class="dim small">' + esc(T("au.email.hint")) + "</p></div>" +
+            (a.emailVerified ? "" : '<button class="btn" data-act="verify-email">' + esc(T("au.email.verify")) + "</button>") +
+            "</div></div>";
+        return '<h3 class="sub">' + esc(T("au.recovery.heading")) + "</h3>" + code + email;
+    }
+    function renderMembers() {
+        var list = D.author.members.filter(function (m) {
+            return m.status !== "removed";
+        });
+        var rows = list
+            .map(function (m) {
+                var keys = D.author.keys.filter(function (k) {
+                    return k.member === m.id && !k.revoked;
+                }).length;
+                var status =
+                    m.status === "active"
+                        ? '<span class="chip chip-ok">' + esc(T("au.members.active")) + "</span>"
+                        : m.expires < D.NOW
+                          ? '<span class="chip">' + esc(T("au.members.expired")) + "</span>"
+                          : '<span class="chip chip-info">' + esc(T("au.members.invited", { date: fmtDate(m.expires) })) + "</span>";
+                var act =
+                    m.status === "active"
+                        ? '<button class="btn btn-sm" data-act="remove-member" data-id="' + esc(m.id) + '">' + esc(T("au.members.remove")) + "</button>"
+                        : '<button class="btn btn-sm" data-act="cancel-invite" data-id="' + esc(m.id) + '">' + esc(T("au.members.cancelInvite")) + "</button>";
+                return '<tr><td><span class="ph">' + esc(m.name) + "</span></td><td>" + status + '</td><td class="num">' + (m.status === "active" ? keys : "—") + '</td><td class="num">' + act + "</td></tr>";
+            })
+            .join("");
+        var table = list.length
+            ? '<div class="table-scroll"><table class="data dash"><thead><tr><th>' + esc(T("au.members.col.name")) + "</th><th>" + esc(T("au.members.col.status")) + '</th><th class="num">' + esc(T("au.members.col.keys")) + "</th><th></th></tr></thead><tbody>" + rows + "</tbody></table></div>"
+            : '<p class="dim">' + esc(T("au.members.none")) + "</p>";
+        return (
+            '<div class="card"><div class="sec-row"><h2 class="sec">' + icon("user") + " " + esc(T("au.members.heading")) + '</h2><button class="btn btn-sm" data-act="invite">' + icon("plus") + esc(T("au.members.invite")) + "</button></div>" +
+            '<p class="dim" style="margin-bottom:8px">' + esc(T("au.members.body")) + "</p>" + table + "</div>"
         );
     }
     function renderProfile() {
         var a = D.author;
+        var maint = isMaint();
+        var used = S.recoveryUsed ? '<div class="banner banner-warn">' + icon("warn") + '<div class="banner-body">' + esc(T("au.recovery.used")) + "</div></div>" : "";
+        var devices =
+            '<div class="card" id="devices"><div class="sec-row"><h2 class="sec">' + icon("key") + " " + esc(T("au.p.devices")) + '</h2><button class="btn btn-sm" data-act="add-device">' + icon("plus") + esc(T("au.p.addDevice")) + "</button></div>" +
+            '<p class="dim" style="margin-bottom:8px">' + esc(T("au.p.devicesBody")) + "</p>" +
+            renderKeysTable() +
+            (maint ? "" : renderRecovery()) +
+            "</div>";
+        var people = maint
+            ? '<div class="card"><h2 class="sec">' + icon("user") + " " + esc(T("au.members.heading")) + '</h2><p class="dim">' + esc(T("au.maint.body")) + "</p></div>"
+            : renderMembers();
         return (
             '<a class="btn btn-link btn-sm back-link" href="#/">' + icon("arrow-left") + esc(T("au.back")) + "</a>" +
             '<h1 style="font-size:var(--fs-xl);margin-bottom:10px">' + esc(T("au.rail.profile")) + "</h1>" +
+            used +
             '<div class="grid-2"><div class="stack">' +
-            '<div class="card"><h2 class="sec">' + esc(T("au.p.heading")) + "</h2>" + profileFields(a) +
-            '<div class="row-actions" style="margin-top:10px"><button class="btn btn-primary" data-toast="au.toast.saved">' + esc(T("au.save")) + '</button><button class="btn">' + esc(T("au.p.revert")) + "</button></div></div>" +
+            '<div class="card"><h2 class="sec">' + esc(T("au.p.heading")) + (maint ? ' <span class="chip">' + icon("lock", "sm") + esc(T("au.ownerOnly")) + "</span>" : "") + "</h2>" +
+            profileFields(a, maint) +
+            (maint ? "" : '<div class="row-actions" style="margin-top:10px"><button class="btn btn-primary" data-act="save-profile">' + esc(T("au.save")) + '</button><button class="btn">' + esc(T("au.p.revert")) + "</button></div>") +
+            "</div>" +
             '</div><div class="stack">' +
-            '<div class="card"><h2 class="sec">' + esc(T("au.p.idHeading")) + '</h2><div class="share"><input class="input mono ph" readonly value="' + esc(a.id) + '"/><button class="btn" data-act="copy" data-text="' + esc(a.id) + '">' + icon("copy") + esc(T("au.copy")) + "</button></div>" +
+            '<div class="card"><h2 class="sec">' + esc(T("au.p.idHeading")) + '</h2><div class="share"><input class="input mono ph" readonly value="' + esc(thisKey()) + '"/><button class="btn" data-act="copy" data-text="' + esc(thisKey()) + '">' + icon("copy") + esc(T("au.copy")) + "</button></div>" +
             '<p class="hint" style="margin-top:6px">' + esc(T("au.p.idHint")) + "</p></div>" +
-            '<div class="card later"><h2 class="sec">' + esc(T("au.p.devices")) + later() + '</h2><p class="dim">' + esc(T("au.p.devicesBody")) + '</p><div class="row-actions" style="margin-top:8px"><button class="btn" data-toast="au.toast.later">' + esc(T("au.p.addDevice")) + '</button><button class="btn" data-toast="au.toast.later">' + esc(T("au.p.recovery")) + "</button></div></div>" +
             '<div class="card later"><h2 class="sec">' + icon("megaphone") + " " + esc(T("au.p.announce")) + later() + '</h2><p class="dim">' + esc(T("au.p.announceBody")) + "</p></div>" +
-            '<div class="card"><h2 class="sec">' + esc(T("au.p.otherHeading")) + '</h2><details class="more"><summary>' + icon("chevron-right", "sm") + esc(T("au.p.useOther")) + '</summary><div class="share" style="margin-top:6px"><input class="input mono" placeholder="' + esc(T("au.p.pastePlaceholder")) + '"/><button class="btn" data-toast="au.toast.later">' + esc(T("au.p.verify")) + '</button></div><p class="hint">' + esc(T("au.p.useOtherHint")) + "</p></details>" +
+            '<div class="card"><h2 class="sec">' + esc(T("au.p.otherHeading")) + '</h2><details class="more"' + (S.redeem.error && S.redeem.where === "profile" ? " open" : "") + "><summary>" + icon("chevron-right", "sm") + esc(T("au.p.useOther")) + "</summary>" +
+            '<p class="hint" style="margin:4px 0">' + esc(T("au.p.useOtherHint")) + "</p>" +
+            '<div class="share"><input class="input mono" id="replace-value" placeholder="' + esc(T("au.p.pastePlaceholder")) + '" value="' + esc(S.redeem.where === "profile" ? S.redeem.value : "") + '"/><button class="btn" data-act="replace">' + esc(T("au.p.verify")) + "</button></div>" +
+            (S.redeem.error && S.redeem.where === "profile" ? '<p class="err">' + esc(S.redeem.error) + "</p>" : "") +
+            redeemExamples("replace-value") +
+            "</details>" +
             '<div class="row-actions" style="margin-top:10px;border-top:1px solid var(--border);padding-top:10px"><button class="btn btn-danger btn-sm" data-act="forget">' + esc(T("au.p.forget")) + '</button><span class="hint">' + esc(T("au.p.forgetHint")) + "</span></div></div>" +
-            "</div></div>"
+            "</div></div>" +
+            devices +
+            people
+        );
+    }
+
+    /* review chrome: one click puts an example into the box, so every outcome can be tried */
+    function redeemExamples(target) {
+        var c = D.author.codes;
+        var ex = [
+            ["pairing", c.pairing],
+            ["invitation", c.invitation],
+            ["recovery", c.recovery],
+            ["wrong", "ZZZZZ-ZZZZZ-ZZZZZ-ZZZZZ"]
+        ];
+        if (S.redeem.emailSent) ex.splice(3, 0, ["email", c.email]);
+        return (
+            '<div class="mock-examples">' + esc(T("au.redeem.examples")) + " " +
+            ex
+                .map(function (e) {
+                    return '<button class="btn btn-link btn-sm" data-act="redeem-example" data-target="' + target + '" data-text="' + esc(e[1]) + '">' + esc(e[0] === "email" ? T("au.email.codePh") : T("au.redeem.ex." + e[0])) + "</button>";
+                })
+                .join(" · ") +
+            "</div>"
         );
     }
 
@@ -972,9 +1136,11 @@
                 '<h2 class="sec">' + icon("key") + " " + esc(T("au.key.title")) + "</h2>" +
                 '<p class="dim" style="margin-bottom:8px">' + esc(T("au.key.body")) + "</p>" +
                 '<div class="share"><div class="key ph">' + esc(D.author.id) + '</div><button class="btn" data-act="copy" data-text="' + esc(D.author.id) + '">' + icon("copy") + esc(T("au.copy")) + "</button></div>" +
-                '<div class="row-actions" style="margin-top:12px"><button class="btn btn-primary" data-act="key-saved">' + esc(T("au.key.saved")) + "</button></div></div></div>"
+                '<div class="row-actions" style="margin-top:12px"><button class="btn" data-act="recovery">' + icon("shield") + esc(T("au.p.recovery")) + '</button><button class="btn btn-primary" data-act="key-saved">' + esc(T("au.key.saved")) + "</button></div></div></div>"
             );
         }
+        var r = S.redeem;
+        var open = r.where === "onboard" && (r.error || r.value || r.emailSent);
         return (
             '<div class="onboard">' +
             '<div class="card"><h2 class="sec">' + esc(T("au.onb.title")) + '</h2><p class="dim" style="margin-bottom:12px">' + esc(T("au.onb.lede")) + '</p><ol class="journey">' +
@@ -987,9 +1153,71 @@
             '<div class="card"><h2 class="sec">' + esc(T("au.create.heading")) + '</h2><p class="dim" style="margin-bottom:10px">' + esc(T("au.create.intro")) + "</p>" +
             profileFields({}) +
             '<div class="row-actions" style="margin-top:10px"><button class="btn btn-primary" data-act="create-author">' + esc(T("au.create.action")) + "</button></div>" +
-            '<details class="more" style="margin-top:12px"><summary>' + icon("chevron-right", "sm") + esc(T("au.have.heading")) + '</summary><p class="hint" style="margin:4px 0">' + esc(T("au.have.hint")) + '</p><div class="share"><input class="input mono" placeholder="' + esc(T("au.p.pastePlaceholder")) + '"/><button class="btn" data-act="key-saved">' + esc(T("au.p.verify")) + "</button></div></details>" +
+            '<details class="more" style="margin-top:12px"' + (open ? " open" : "") + "><summary>" + icon("chevron-right", "sm") + esc(T("au.have.heading")) + "</summary>" +
+            '<p class="hint" style="margin:4px 0 8px">' + esc(T("au.have.hint")) + "</p>" +
+            '<label class="field" style="margin-bottom:8px"><span>' + esc(T("au.p.pastePlaceholder")) + '</span><input class="input mono" id="redeem-value" value="' + esc(r.where === "onboard" ? r.value : "") + '"/></label>' +
+            '<label class="field" style="margin-bottom:8px"><span>' + esc(T("au.redeem.label")) + '</span><input class="input" id="redeem-label" value="' + esc(D.author.machine) + '"/><span class="hint">' + esc(T("au.keys.renameHint")) + "</span></label>" +
+            (r.error && r.where === "onboard" ? '<p class="err">' + esc(r.error) + "</p>" : "") +
+            '<div class="row-actions"><button class="btn btn-primary" data-act="redeem">' + esc(T("au.p.verify")) + "</button></div>" +
+            redeemExamples("redeem-value") +
+            '<details class="more" style="margin-top:10px"' + (r.emailSent ? " open" : "") + "><summary>" + icon("chevron-right", "sm") + esc(T("au.email.recover")) + "</summary>" +
+            '<p class="hint" style="margin:4px 0">' + esc(T("au.email.recoverHint")) + "</p>" +
+            '<div class="share"><input class="input" type="email" value="' + esc(D.author.email) + '"/><button class="btn" data-act="recover-email">' + icon("send") + esc(T("au.email.recoverSend")) + "</button></div>" +
+            (r.emailSent ? '<p class="dim small" style="margin-top:6px">' + esc(T("au.email.recoverSent")) + "</p>" : "") +
+            "</details>" +
+            "</details>" +
             "</div></div>"
         );
+    }
+
+    /* ---------- the «ключ или код» box: what each kind of paste does ---------- */
+    function sameCode(input, code) {
+        var norm = function (s) {
+            return s.toUpperCase().replace(/[\s-]/g, "").replace(/O/g, "0").replace(/[IL]/g, "1");
+        };
+        return norm(input) === norm(code);
+    }
+    function addKey(label, member, origin) {
+        var id = "k" + (D.author.keys.length + 1);
+        D.author.keys.push({ id: id, label: label || D.author.machine, member: member, origin: origin, added: D.NOW, lastUsed: D.NOW });
+        return id;
+    }
+    function redeem(where, value, label) {
+        var v = (value || "").trim();
+        var c = D.author.codes;
+        S.redeem.where = where;
+        S.redeem.value = v;
+        if (!v) {
+            S.redeem.error = T("au.redeem.empty");
+            render();
+            return;
+        }
+        var dest = "#/";
+        if (sameCode(v, c.invitation)) {
+            S.author = "maintainer";
+        } else if (sameCode(v, c.pairing)) {
+            S.author = "yes";
+            S.thisKey = addKey(label, null, "pairing");
+        } else if (sameCode(v, c.recovery) || (S.redeem.emailSent && sameCode(v, c.email))) {
+            S.author = "yes";
+            S.thisKey = addKey(label, null, sameCode(v, c.recovery) ? "recovery" : "email");
+            if (sameCode(v, c.recovery)) {
+                D.author.recoverySetAt = null;
+                S.recoveryUsed = true;
+            }
+            dest = "#/profile";
+        } else if (/^[A-Za-z0-9_-]{43}$/.test(v)) {
+            S.author = "yes";
+        } else {
+            S.redeem.error = T("au.redeem.unknown");
+            render();
+            return;
+        }
+        S.redeem = { value: "", error: null, emailSent: false };
+        S.keyShown = false;
+        closeDialog();
+        go(dest);
+        window.NEST.toast(T("au.toast.joined"));
     }
     function renderUnreadable() {
         return '<div class="onboard"><div class="card notice-danger" style="grid-column:1/-1;max-width:640px"><h2 class="sec">' + esc(T("au.unreadable.heading")) + '</h2><p class="dim">' + esc(T("au.unreadable.body")) + "</p></div></div>";
@@ -1110,6 +1338,86 @@
     function confirmDialog(title, body, okLabel, okAct, danger, extraAttrs) {
         S.dlg = "confirm";
         openDialog("mid", dlgHead(title) + "<p>" + body + '</p><div class="actions"><button class="btn" data-act="dlg-close">' + esc(T("au.cancel")) + '</button><button class="btn ' + (danger ? "btn-danger" : "btn-primary") + '" data-act="' + okAct + '" ' + (extraAttrs || "") + ">" + esc(okLabel) + "</button></div>");
+    }
+
+    /* ---------- keys, recovery, co-maintainers: dialogs ---------- */
+    var PAIR_MS = 15 * 60 * 1000;
+    function codeBox(code) {
+        return '<div class="share"><div class="code-box ph">' + esc(code) + '</div><button class="btn" data-act="copy" data-text="' + esc(code) + '">' + icon("copy") + esc(T("au.copy")) + "</button></div>";
+    }
+    function pairingDialog() {
+        S.dlg = "pairing";
+        S.code = { kind: "pairing", until: Date.now() + PAIR_MS };
+        drawPairing();
+    }
+    function drawPairing() {
+        var left = S.code.until - Date.now();
+        openDialog(
+            "mid",
+            dlgHead(T("au.pair.title")) +
+                '<p class="dim">' + esc(T("au.pair.body")) + "</p>" +
+                (left > 0
+                    ? codeBox(D.author.codes.pairing) + '<p class="hint" style="margin-top:6px">' + icon("clock", "sm") + ' <span id="pair-left">' + esc(T("au.pair.expires", { left: mmss(left) })) + "</span></p>"
+                    : '<p class="err">' + esc(T("au.pair.expired")) + "</p>") +
+                '<div class="actions">' + (left > 0 ? "" : '<button class="btn" data-act="add-device">' + esc(T("au.pair.again")) + "</button>") + '<button class="btn btn-primary" data-act="dlg-close">' + esc(T("au.close")) + "</button></div>"
+        );
+    }
+    /* the countdown ticks only while the pairing dialog is on screen */
+    setInterval(function () {
+        if (!S.code || S.dlg !== "pairing" || !dlg || !dlg.open) return;
+        var left = S.code.until - Date.now();
+        var el = document.getElementById("pair-left");
+        if (left <= 0) drawPairing();
+        else if (el) el.textContent = T("au.pair.expires", { left: mmss(left) });
+    }, 1000);
+    function inviteDialog(err) {
+        S.dlg = "invite";
+        openDialog(
+            "mid",
+            dlgHead(T("au.invite.title")) +
+                '<label class="field"><span>' + esc(T("au.invite.name")) + '</span><input class="input" id="invite-name" autofocus/><span class="hint">' + esc(T("au.invite.nameHint")) + "</span></label>" +
+                (err ? '<p class="err">' + esc(err) + "</p>" : "") +
+                '<div class="actions"><button class="btn" data-act="dlg-close">' + esc(T("au.cancel")) + '</button><button class="btn btn-primary" data-act="do-invite">' + esc(T("au.invite.create")) + "</button></div>"
+        );
+    }
+    function inviteCodeDialog(name) {
+        S.dlg = "invite-code";
+        openDialog(
+            "mid",
+            dlgHead(T("au.invite.title") + " · " + name) +
+                '<p class="dim">' + esc(T("au.invite.body")) + "</p>" +
+                codeBox(D.author.codes.invitation) +
+                '<div class="actions"><button class="btn btn-primary" data-act="dlg-close">' + esc(T("au.close")) + "</button></div>"
+        );
+    }
+    function recoveryDialog() {
+        S.dlg = "recovery";
+        openDialog(
+            "mid",
+            dlgHead(T("au.recovery.title")) +
+                '<p class="dim">' + esc(T("au.recovery.body")) + "</p>" +
+                codeBox(D.author.codes.recovery) +
+                '<div class="actions"><button class="btn btn-primary" data-act="recovery-saved">' + esc(T("au.recovery.saved")) + "</button></div>"
+        );
+    }
+    function renameDialog(k) {
+        S.dlg = "rename";
+        openDialog(
+            "mid",
+            dlgHead(T("au.keys.renameTitle")) +
+                '<label class="field"><input class="input" id="rename-value" value="' + esc(k.label) + '"/><span class="hint">' + esc(T("au.keys.renameHint")) + "</span></label>" +
+                '<div class="actions"><button class="btn" data-act="dlg-close">' + esc(T("au.cancel")) + '</button><button class="btn btn-primary" data-act="do-rename-key" data-id="' + esc(k.id) + '">' + esc(T("au.save")) + "</button></div>"
+        );
+    }
+    function emailDialog() {
+        S.dlg = "email";
+        openDialog(
+            "mid",
+            dlgHead(T("au.email.title")) +
+                '<p class="dim">' + esc(T("au.email.sent", { email: D.author.email })) + "</p>" +
+                '<div class="share"><input class="input mono" id="email-code" placeholder="' + esc(T("au.email.codePh")) + '"/><button class="btn btn-primary" data-act="do-verify-email">' + esc(T("au.email.confirm")) + "</button></div>" +
+                '<div class="mock-examples">' + esc(T("au.redeem.examples")) + ' <button class="btn btn-link btn-sm" data-act="redeem-example" data-target="email-code" data-text="' + esc(D.author.codes.email) + '">' + esc(T("au.email.codePh")) + "</button></div>"
+        );
     }
 
     function newWidgetDialog() {
@@ -1659,6 +1967,143 @@
             case "wiz-submit":
                 wizSubmit();
                 break;
+            /* keys, recovery, co-maintainers */
+            case "add-device":
+                pairingDialog();
+                break;
+            case "invite":
+                inviteDialog();
+                break;
+            case "do-invite": {
+                var nameEl = document.getElementById("invite-name");
+                var nm = nameEl ? nameEl.value.trim() : "";
+                if (!nm) {
+                    inviteDialog(T("au.invite.nameRequired"));
+                    break;
+                }
+                D.author.members.push({ id: "m" + (D.author.members.length + 1), name: nm, status: "invited", expires: D.NOW + 7 * D.DAY });
+                render();
+                inviteCodeDialog(nm);
+                break;
+            }
+            case "cancel-invite":
+                memberById(id).status = "removed";
+                render();
+                window.NEST.toast(T("au.toast.inviteCancelled"));
+                break;
+            case "remove-member":
+                confirmDialog(T("au.members.removeTitle", { name: memberName(id) }), esc(T("au.members.removeBody", { name: memberName(id) })), T("au.members.remove"), "do-remove-member", true, 'data-id="' + esc(id) + '"');
+                break;
+            case "do-remove-member":
+                memberById(id).status = "removed";
+                D.author.keys.forEach(function (k) {
+                    if (k.member === id) k.revoked = true;
+                });
+                closeDialog();
+                render();
+                window.NEST.toast(T("au.toast.memberRemoved"));
+                break;
+            case "rename-key":
+                renameDialog(keyById(id));
+                break;
+            case "do-rename-key": {
+                var rv = document.getElementById("rename-value");
+                if (rv && rv.value.trim()) keyById(id).label = rv.value.trim();
+                closeDialog();
+                render();
+                window.NEST.toast(T("au.toast.keyRenamed"));
+                break;
+            }
+            case "revoke-key": {
+                var rk = keyById(id);
+                confirmDialog(T("au.keys.revokeTitle", { label: rk.label }), esc(rk.id === thisKeyId() ? T("au.keys.revokeThisBody") : T("au.keys.revokeBody")), T("au.keys.revoke"), "do-revoke-key", true, 'data-id="' + esc(id) + '"');
+                break;
+            }
+            case "do-revoke-key": {
+                var gone = keyById(id);
+                var wasMine = gone.id === thisKeyId();
+                gone.revoked = true;
+                closeDialog();
+                if (wasMine) {
+                    S.author = "none";
+                    S.thisKey = null;
+                    go("#/");
+                } else render();
+                window.NEST.toast(T("au.toast.keyRevoked"));
+                break;
+            }
+            case "recovery":
+                if (D.author.recoverySetAt && !S.keyShown) confirmDialog(T("au.recovery.replace"), esc(T("au.recovery.replaceBody")), T("au.recovery.replace"), "recovery-open", false);
+                else recoveryDialog();
+                break;
+            case "recovery-open":
+                recoveryDialog();
+                break;
+            case "recovery-saved":
+                D.author.recoverySetAt = D.NOW;
+                S.recoveryUsed = false;
+                closeDialog();
+                if (S.keyShown) {
+                    S.keyShown = false;
+                    S.author = "yes";
+                    go("#/");
+                } else render();
+                break;
+            case "save-profile": {
+                /* a new e-mail is unconfirmed until its owner pastes the code mailed to it */
+                var em = document.getElementById("p-email");
+                var changed = em && em.value.trim() && em.value.trim() !== D.author.email;
+                if (changed) {
+                    D.author.email = em.value.trim();
+                    D.author.emailVerified = false;
+                }
+                render();
+                window.NEST.toast(changed ? T("au.toast.emailChanged") : T("au.toast.saved"));
+                break;
+            }
+            case "verify-email":
+                emailDialog();
+                break;
+            case "do-verify-email":
+                D.author.emailVerified = true;
+                closeDialog();
+                render();
+                window.NEST.toast(T("au.toast.emailVerified"));
+                break;
+            case "recover-email":
+                S.redeem.where = "onboard";
+                S.redeem.emailSent = true;
+                render();
+                break;
+            case "redeem-example": {
+                var target = document.getElementById(el.getAttribute("data-target"));
+                if (target) {
+                    target.value = el.getAttribute("data-text");
+                    target.dispatchEvent(new Event("input", { bubbles: true }));
+                }
+                break;
+            }
+            case "redeem": {
+                var rvEl = document.getElementById("redeem-value");
+                var lbEl = document.getElementById("redeem-label");
+                redeem("onboard", rvEl ? rvEl.value : "", lbEl ? lbEl.value : "");
+                break;
+            }
+            case "replace": {
+                var rp = document.getElementById("replace-value");
+                var val = rp ? rp.value : "";
+                /* an owner key with no recovery code: replacing it can orphan the author */
+                if (val.trim() && !isMaint() && !D.author.recoverySetAt) {
+                    S.redeem.where = "profile";
+                    S.redeem.value = val;
+                    confirmDialog(T("au.orphan.title"), esc(T("au.orphan.body")), T("au.orphan.ok"), "do-replace", true);
+                } else redeem("profile", val, D.author.machine);
+                break;
+            }
+            case "do-replace":
+                closeDialog();
+                redeem("profile", S.redeem.value, D.author.machine);
+                break;
             /* mock bar */
             case "vw":
                 S.vw = el.getAttribute("data-v");
@@ -1667,6 +2112,9 @@
             case "author-state":
                 S.author = el.getAttribute("data-v");
                 S.keyShown = false;
+                S.thisKey = null;
+                S.recoveryUsed = false;
+                S.redeem = { value: "", error: null, emailSent: false };
                 S.tab = "author";
                 render();
                 break;
@@ -1697,6 +2145,11 @@
     }
     function onInput(e) {
         var el = e.target;
+        if (el.id === "redeem-value" || el.id === "replace-value") {
+            S.redeem.where = el.id === "redeem-value" ? "onboard" : "profile";
+            S.redeem.value = el.value;
+            S.redeem.error = null;
+        }
         if (el.id === "wiz-custom") {
             S.wiz.custom = el.value;
             var w = find(S.wiz.id);
