@@ -272,6 +272,10 @@
     font-size: var(--fs-xs);
     white-space: nowrap;
 }
+/* a version that needs a newer terminal: the reason, in the warning colour, before the disabled button */
+.compat-note {
+    color: var(--warn);
+}
 .cat-actions {
     display: flex;
     align-items: center;

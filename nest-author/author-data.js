@@ -44,7 +44,9 @@ window.AUTHOR_DATA = (function () {
                 changedAt: ago(1, 3),
                 hot: true,
                 permissions: ["notifications", "signalLevels", "storage"],
-                egress: ["fapi.binance.com", "api.bybit.com", "api.gateio.ws", "api-futures.kucoin.com", "futures.kraken.com", "api.hyperliquid.xyz", "www.okx.com"]
+                egress: ["fapi.binance.com", "api.bybit.com", "api.gateio.ws", "api-futures.kucoin.com", "futures.kraken.com", "api.hyperliquid.xyz", "www.okx.com"],
+                /* the folder's widget.json raises the oldest terminal it supports (invented) */
+                minColibri: "1.4.0"
             },
             share: "q3V9xTn2L8wRk4mZ0pYs7HcBfA1dJ6uE5gQiNoKtWvM",
             versions: [
@@ -57,6 +59,7 @@ window.AUTHOR_DATA = (function () {
                     notesRu: "Добавлена OKX — теперь семь бирж.\nАлерт по порогу можно задать отдельно для каждой биржи.",
                     notesEn: "OKX added — seven venues now.\nThe threshold alert can be set per venue.",
                     added: { egress: ["www.okx.com"] },
+                    minColibri: "1.4.0",
                     thread: []
                 },
                 {

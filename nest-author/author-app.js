@@ -130,6 +130,28 @@
         var m = /^(\d+)\.(\d+)\.(\d+)$/.exec(String(v || "").trim());
         return m ? [Number(m[1]), Number(m[2]), Number(m[3])] : null;
     }
+    /* Why a typed number cannot be published: a suffix (there is no pre-release channel), or not three
+       plain numbers (a letter, a missing part, a leading zero). Null when it can. */
+    function versionProblem(v) {
+        var s = String(v || "").trim();
+        if (/^\d+\.\d+\.\d+-/.test(s)) return "prerelease";
+        if (!parseV(s) || /(^|\.)0\d/.test(s)) return "badFormat";
+        return null;
+    }
+    /* Whether users must ACT on the folder's version — agree to new access, or update Colibri — which is
+       when the wizard recommends a major number. */
+    function mustAct(w) {
+        if (!w.everApproved || !w.code) return null;
+        var live = w.live || { permissions: [], egress: [] };
+        var more = w.code.permissions.some(function (p) {
+            return live.permissions.indexOf(p) < 0;
+        }) || w.code.egress.some(function (h) {
+            return live.egress.indexOf(h) < 0;
+        });
+        if (more) return "consent";
+        if (w.code.minColibri && w.code.minColibri !== live.minColibri) return "colibri";
+        return null;
+    }
     function cmpV(a, b) {
         var x = parseV(a);
         var y = parseV(b);
@@ -751,7 +773,6 @@
                     (v.state === "approved" && !v.current && w.state !== "takendown" && w.state !== "withdrawn"
                         ? '<button data-act="rollback" data-key="' + esc(key) + '">' + icon("undo") + esc(T("au.v.rollback")) + "</button>"
                         : "") +
-                    (v.state === "approved" && v.current ? '<button class="later" data-toast="au.toast.later">' + icon("flask") + esc(T("au.v.prerelease")) + later() + "</button>" : "") +
                     "</div></details>";
                 var main =
                     "<tr>" +
@@ -813,6 +834,7 @@
                 items.push('<li><span class="minus">−</span><span>' + esc(T("au.diff.hostRemoved")) + ' <span class="mono">' + esc(h) + "</span></span></li>");
             });
         if (v.permissions && v.permissions.indexOf("trading") >= 0) items.push('<li><span class="plus">+</span><span>' + esc(T("au.diff.perm")) + " «" + esc(scopeLabel("trading")) + "»</span></li>");
+        if (v.minColibri && (!prev || prev.minColibri !== v.minColibri)) items.push('<li><span class="plus">+</span><span>' + esc(T("au.diff.minColibri", { v: v.minColibri })) + "</span></li>");
         if (!items.length) items.push('<li><span class="same">' + icon("check", "sm") + "</span><span>" + esc(T("au.diff.codeOnly")) + "</span></li>");
         return '<ul class="chg">' + items.join("") + "</ul>";
     }
@@ -1267,7 +1289,12 @@
         var history = uvHistory(f, v);
         var served = history[0];
         var installed = S.uvUpdated ? served.v : D.userView.installed;
-        var waiting = cmpV(served.v, installed) > 0;
+        /* the «Colibri 1.3.1» case: the update needs a newer terminal, so it is not offered and the
+           installed version keeps working */
+        var needs = S.uvCase === "old" && v && v.minColibri ? v.minColibri : null;
+        var waiting = !needs && cmpV(served.v, installed) > 0;
+        var blocked = needs && cmpV(served.v, installed) > 0;
+        var needsLine = blocked ? '<div class="wn" style="color:var(--warn)">' + icon("warn", "sm") + " " + esc(T("au.uv.needsColibri", { v: served.v, min: needs })) + "</div>" : "";
         var since = history.filter(function (x) {
             return cmpV(x.v, installed) > 0;
         });
@@ -1291,10 +1318,12 @@
             '<div class="banner banner-info">' + icon("eye") + '<div class="banner-body">' + esc(T("au.uv.banner", { v: v ? v.v : "" })) + ' <a href="#" data-act="tab" data-tab="author">' + esc(T("au.uv.back")) + "</a></div></div>" +
             '<div class="uv-case"><span class="dim small">' + esc(T("au.uv.case.label", { v: D.userView.installed })) + '</span><div class="seg">' +
             '<button type="button" data-act="uv-case" data-v="one" aria-pressed="' + (S.uvCase !== "three") + '">' + esc(T("au.uv.case.one")) + "</button>" +
-            '<button type="button" data-act="uv-case" data-v="three" aria-pressed="' + (S.uvCase === "three") + '">' + esc(T("au.uv.case.three")) + "</button></div></div>" +
+            '<button type="button" data-act="uv-case" data-v="three" aria-pressed="' + (S.uvCase === "three") + '">' + esc(T("au.uv.case.three")) + "</button>" +
+            '<button type="button" data-act="uv-case" data-v="old" aria-pressed="' + (S.uvCase === "old") + '">' + esc(T("au.uv.case.old")) + "</button></div></div>" +
             '<h3 class="uv-sub">' + esc(T("au.uv.tab.catalog")) + "</h3>" +
             '<div class="cat-row">' + wicon(f) + '<div style="min-width:0"><div class="t">' + esc(f.name) + ' <span class="by">' + esc(D.author.name) + '</span></div><div class="d">' + esc(f.descRu) + "</div>" +
             (notes && waiting ? '<div class="wn" title="' + esc(notes) + '"><b>' + esc(T("au.uv.whatsNewIn", { v: v.v })) + ":</b> " + ph(notes.split("\n")[0], true) + "</div>" : "") +
+            needsLine +
             "</div>" +
             (waiting ? updateBtn("btn-sm", T("au.uv.update")) : '<span class="dim small">' + icon("check", "sm") + " " + esc(T("au.uv.installed")) + "</span>") +
             "</div>" +
@@ -1306,7 +1335,7 @@
             /* «Мои виджеты»: the installed row offers the update itself, with the same one-line teaser */
             '<h3 class="uv-sub">' + esc(T("au.uv.tab.myWidgets")) + "</h3>" +
             '<div class="cat-row my-row">' + wicon(f) + '<div style="min-width:0"><div class="t">' + esc(f.name) + ' <span class="by mono">' + esc(installed) + "</span></div>" +
-            (waiting && notes ? '<div class="wn" title="' + esc(notes) + '"><b>' + esc(T("au.uv.whatsNewIn", { v: served.v })) + ":</b> " + ph(notes.split("\n")[0], true) + "</div>" : '<div class="d">' + esc(T("au.uv.running")) + "</div>") +
+            (waiting && notes ? '<div class="wn" title="' + esc(notes) + '"><b>' + esc(T("au.uv.whatsNewIn", { v: served.v })) + ":</b> " + ph(notes.split("\n")[0], true) + "</div>" : blocked ? needsLine : '<div class="d">' + esc(T("au.uv.running")) + "</div>") +
             '</div><div class="row-actions">' + (waiting ? updateBtn("btn-sm", T("au.uv.updateTo", { v: served.v })) : "") +
             '<button class="btn btn-sm btn-icon" data-toast="au.toast.later" aria-label="⋯">⋯</button><span class="uv-switch" aria-hidden="true"></span></div></div>' +
             '<p class="hint" style="margin-top:8px">' + esc(T("au.uv.noNotesRule")) + " " + esc(T("au.uv.sinceRule")) + "</p>" +
@@ -1316,6 +1345,8 @@
             block +
             historyHtml +
             (waiting ? '<div class="impact" style="margin-top:10px"><h4>' + icon("shield", "sm") + " " + esc(T("au.uv.consent.title")) + '</h4><p class="dim small">' + esc(T("au.uv.consent.body", { host: "www.okx.com" })) + "</p></div>" : "") +
+            (blocked ? '<div class="impact" style="margin-top:10px"><h4>' + icon("warn", "sm") + " " + esc(T("au.uv.needsColibri.title", { min: needs })) + '</h4><p class="dim small">' +
+                esc(T("au.uv.needsColibri.body", { v: served.v, min: needs, have: "1.3.1", installed: installed })) + "</p></div>" : "") +
             (waiting ? '<div class="row-actions" style="margin-top:12px">' + updateBtn("", T("au.uv.updateTo", { v: served.v })) + "</div>" : "") +
             "</div></div>"
         );
@@ -1471,7 +1502,8 @@
             step: 1,
             /* "first" = nothing approved yet: the catalog choice applies and the notes are optional */
             first: !w.everApproved,
-            choice: hi ? "patch" : "manifest",
+            /* major leads when users will have to act on the update (the versioning policy) */
+            choice: hi ? (!from && mustAct(w) ? "major" : "patch") : "manifest",
             custom: "",
             notesRu: from ? T("au.wiz.rb.notesRu", { v: from }) : "",
             notesEn: from ? T("au.wiz.rb.notesEn", { v: from }) : "",
@@ -1490,8 +1522,10 @@
     function wizVersionError(w) {
         var v = wizVersion(w);
         var hi = highest(w);
-        if (!parseV(v)) return T("au.wiz.v.badFormat");
-        if (hi && cmpV(v, hi.v) <= 0) return T("au.wiz.v.notAfter", { v: hi.v });
+        var problem = versionProblem(v);
+        if (problem) return T("au.wiz.v." + problem);
+        if (hi && cmpV(v, hi.v) === 0) return T("au.wiz.v.taken", { v: hi.v });
+        if (hi && cmpV(v, hi.v) < 0) return T("au.wiz.v.behind", { v: hi.v });
         return null;
     }
     function renderWizard() {
@@ -1558,12 +1592,15 @@
         }
         var base = hi ? hi.v : null;
         var radios = hi
-            ? radio("patch", bump(base, "patch"), T("au.wiz.v.patch"), T("au.wiz.v.patchSub")) + radio("minor", bump(base, "minor"), T("au.wiz.v.minor"), T("au.wiz.v.minorSub")) + radio("major", bump(base, "major"), T("au.wiz.v.major"), T("au.wiz.v.majorSub")) + radio("custom", null, T("au.wiz.v.custom"), null)
+            ? radio("patch", bump(base, "patch"), T("au.wiz.v.patch"), T(!z.from && mustAct(w) ? "au.wiz.v.patchSubPlain" : "au.wiz.v.patchSub")) + radio("minor", bump(base, "minor"), T("au.wiz.v.minor"), T("au.wiz.v.minorSub")) + radio("major", bump(base, "major"), T("au.wiz.v.major"), T("au.wiz.v.majorSub")) + radio("custom", null, T("au.wiz.v.custom"), null)
             : radio("manifest", w.code.manifestVersion, T("au.wiz.v.fromManifest"), T("au.wiz.v.fromManifestSub")) + radio("custom", null, T("au.wiz.v.custom"), null);
         var err = wizVersionError(w);
+        var act = z.from ? null : mustAct(w);
         return (
-            wizSource(w) + facts + '<div class="vis">' + radios + "</div>" +
-            (err && (z.choice === "custom" && z.custom) ? '<p class="err" style="margin-top:6px">' + esc(err) + "</p>" : "") +
+            wizSource(w) + facts +
+            (act && hi ? '<p class="hint" style="margin:6px 0">' + icon("info", "sm") + " " + esc(T("au.wiz.v.recommendMajor." + act)) + "</p>" : "") +
+            '<div class="vis">' + radios + "</div>" +
+            '<p class="err" id="wiz-v-err" style="margin-top:6px"' + (err && z.choice === "custom" && z.custom ? "" : " hidden") + ">" + esc(err || "") + "</p>" +
             '<p class="hint" style="margin-top:8px">' + esc(T(z.from ? "au.wiz.rb.written" : "au.wiz.v.written")) + "</p>"
         );
     }
@@ -1670,6 +1707,10 @@
             remE.forEach(function (h) {
                 items.push('<li><span class="minus">−</span><span>' + esc(T("au.diff.hostRemoved")) + ' <span class="mono">' + esc(h) + "</span></span></li>");
             });
+            if (w.code.minColibri && w.code.minColibri !== live.minColibri) {
+                items.push('<li><span class="plus">+</span><span>' + esc(T("au.diff.minColibri", { v: w.code.minColibri })) + " " +
+                    esc(live.minColibri ? T("au.diff.minColibriWas", { v: live.minColibri }) : T("au.diff.minColibriAny")) + " — " + esc(T("au.diff.leftBehind")) + "</span></li>");
+            }
             if (!items.length) {
                 items.push('<li><span class="same">' + icon("check", "sm") + "</span><span>" + esc(T("au.diff.codeOnly")) + "</span></li>");
                 verdict = T("au.wiz.impact.codeVerdict");
@@ -2154,7 +2195,14 @@
             S.wiz.custom = el.value;
             var w = find(S.wiz.id);
             var btn = dlg.querySelector('[data-act="wiz-next"]');
-            if (btn) btn.disabled = !!wizVersionError(w);
+            var verr = wizVersionError(w);
+            if (btn) btn.disabled = !!verr;
+            /* the reason, as the author types: a suffix, a malformed number, a taken one or a lower one */
+            var line = dlg.querySelector("#wiz-v-err");
+            if (line) {
+                line.textContent = verr || "";
+                line.hidden = !(verr && el.value.trim());
+            }
         }
         if (el.getAttribute("data-wiz")) {
             S.wiz[el.getAttribute("data-wiz")] = el.value;

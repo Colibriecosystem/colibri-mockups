@@ -189,7 +189,8 @@
         "liquidation-radar":  { installed: true, installs: 863, active7d: 402, firstListedAt: 1777680000000, updatedAt: 1785196800000 },
         "oi-monitor":         { installed: true, updateAvailable: true, installs: 351, active7d: 120, firstListedAt: 1776124800000, updatedAt: 1788566400000 },
         "scalp-lenta":        { installs: 177,  active7d: 52,  firstListedAt: 1783382400000, updatedAt: 1783382400000 },
-        "scalpy-net":         { installs: 59,   active7d: 12,  firstListedAt: 1787788800000, updatedAt: 1787788800000 },
+        /* needs a newer terminal than the reader's (invented): install is off, the row says why */
+        "scalpy-net":         { needsColibri: "1.4.0", installs: 59, active7d: 12, firstListedAt: 1787788800000, updatedAt: 1787788800000 },
         "twap-radar":         { installs: 23,   active7d: 9,   firstListedAt: 1788652800000, updatedAt: 1788652800000 }
     };
 
@@ -232,15 +233,16 @@
     function actionCluster(e) {
         var m = mock(e);
         var windowCapable = e.surfaces.indexOf("window") >= 0;
-        var state = m.updateAvailable ? "update" : (m.installed ? "installed" : "none");
+        var state = m.updateAvailable ? "update" : (m.installed ? "installed" : (m.needsColibri ? "blocked" : "none"));
         var opensWindow = state === "installed" && windowCapable;
         return {
             state: state,
-            primary: state === "update" ? "update" : (opensWindow ? "open" : (state === "installed" ? null : "install")),
+            primary: state === "update" ? "update" : (opensWindow ? "open" : (state === "installed" ? null : state === "blocked" ? "blocked" : "install")),
+            needsColibri: m.needsColibri || null,
             opensWindow: opensWindow,
-            showCheck: state !== "none" && !opensWindow,
+            showCheck: state !== "none" && state !== "blocked" && !opensWindow,
             slotNote: state === "installed" && !windowCapable,
-            menu: state !== "none",
+            menu: state !== "none" && state !== "blocked",
             openAsWindowInMenu: state === "update" && windowCapable
         };
     }
@@ -344,6 +346,11 @@
         }
         if (a.slotNote) html += '<span class="slot-note" data-i18n="cat.slotOnly"></span>';
         if (a.primary === "install") html += '<button type="button" class="btn btn-sm btn-primary" data-i18n="cat.install"></button>';
+        else if (a.primary === "blocked") {
+            var v = " data-vars='" + JSON.stringify({ v: a.needsColibri }) + "'";
+            html += '<span class="slot-note compat-note" data-i18n="cat.needsColibri"' + v + "></span>" +
+                '<button type="button" class="btn btn-sm" disabled data-i18n="cat.install" data-i18n-attr="title:cat.needsColibri.hint"' + v + "></button>";
+        }
         else if (a.primary === "update") html += '<button type="button" class="btn btn-sm btn-primary" data-i18n="cat.update"></button>';
         else if (a.primary === "open") html += '<button type="button" class="btn btn-sm btn-open" data-i18n="cat.openWindow"></button>';
         if (a.menu) {
@@ -478,6 +485,7 @@
                 '<dt data-i18n="cat.facts.egress"></dt><dd class="plain">' + (e.egress.length ? e.egress.length : '<span data-i18n="cat.facts.noEgress"></span>') + "</dd>" +
                 '<dt data-i18n="cat.facts.embeds"></dt><dd class="plain">' + (e.embeddedOrigins.length ? esc(e.embeddedOrigins.join(", ")) : '<span data-i18n="cat.facts.none"></span>') + "</dd>" +
                 '<dt data-i18n="cat.facts.apiVersion"></dt><dd>' + e.minApiVersion + "</dd>" +
+                (m.needsColibri ? '<dt data-i18n="cat.facts.compat"></dt><dd class="plain" data-i18n="cat.facts.compatValue" data-vars=\'' + JSON.stringify({ v: m.needsColibri }) + "'></dd>" : "") +
                 (typeof m.installs === "number" ? '<dt data-i18n="cat.installs"></dt><dd class="ph">' + m.installs + "</dd>" : "") +
                 (typeof m.active7d === "number" ? '<dt data-i18n="cat.active7d"></dt><dd class="ph">' + m.active7d + "</dd>" : "") +
                 (typeof m.firstListedAt === "number" ? '<dt data-i18n="cat.firstListed"></dt><dd class="plain">' + timeHtml(m.firstListedAt) + "</dd>" : "") +
