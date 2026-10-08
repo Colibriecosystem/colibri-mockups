@@ -104,6 +104,25 @@
     font-weight: 600;
     border-bottom-color: var(--accent);
 }
+/* the author's unread count, the same number as on the bell */
+.win-tabs .tab-badge {
+    display: inline-block;
+    min-width: 15px;
+    height: 15px;
+    margin-left: 6px;
+    padding: 0 4px;
+    border-radius: var(--r-pill);
+    background: var(--accent);
+    color: var(--accent-contrast);
+    font-size: 9px;
+    line-height: 15px;
+    font-weight: 600;
+    text-align: center;
+    vertical-align: 1px;
+}
+.win-tabs .tab-badge[hidden] {
+    display: none;
+}
 
 /* ---------- placeholders and "later" ---------- */
 /* .ph = invented for the mock (dates, counts, every widget that is not in the public catalog). */
@@ -221,6 +240,11 @@
     text-align: left;
     width: 100%;
 }
+.note-row,
+.note-row:visited {
+    color: var(--text);
+    text-decoration: none;
+}
 .note-row:hover {
     background: var(--surface-2);
 }
@@ -231,6 +255,17 @@
     display: block;
     color: var(--faint);
     font-size: var(--fs-xs);
+}
+.note-row.is-new {
+    background: var(--tint-info-bg);
+}
+.note-row .note-new {
+    color: var(--info);
+    font-weight: 600;
+}
+.bell-pop {
+    max-height: 420px;
+    overflow-y: auto;
 }
 
 .rail-a {

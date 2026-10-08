@@ -25,6 +25,8 @@
         open: {}, /* expanded version rows: "<id>@<v>" → true */
         editing: null, /* "<id>@<v>" whose notes are being edited */
         bell: false,
+        bellSeen: false /* the bell was opened: the registry's read marker is at the newest event */,
+        bellNew: 0 /* rows that were new when the bell opened; they keep their dot until it closes */,
         keyShown: false,
         created: null, /* id of a widget created a moment ago — the page greets it once */
         wiz: null,
@@ -305,6 +307,7 @@
             else b.removeAttribute("aria-current");
         });
         syncBar();
+        syncTabBadge();
         var r = route();
         if (S.tab === "catalog") root.innerHTML = renderUserView();
         else if (S.tab !== "author") root.innerHTML = '<div class="placeholder-tab">' + esc(T("au.otherTab")) + "</div>";
@@ -340,11 +343,11 @@
 
     function renderBar() {
         var a = D.author;
-        var unread = D.notifications.length;
+        var unread = bellUnread();
         var bell =
-            '<div class="bell later">' +
-            '<button class="btn btn-icon" data-act="bell" title="' + esc(T("au.bell.title")) + '" aria-label="' + esc(T("au.bell.title")) + '">' + icon("bell") + "</button>" +
-            '<span class="badge ph">' + unread + "</span>" +
+            '<div class="bell">' +
+            '<button class="btn btn-icon" data-act="bell" title="' + esc(T("au.bell.title")) + '" aria-label="' + esc(T("au.bell.title")) + '" aria-expanded="' + S.bell + '">' + icon("bell") + "</button>" +
+            (unread ? '<span class="badge">' + badgeText(unread) + "</span>" : "") +
             (S.bell ? renderBellPop() : "") +
             "</div>";
         return (
@@ -358,16 +361,80 @@
             "</div>"
         );
     }
+    /* ---------- the bell: the author's feed ---------- */
+    /* Unread is a per-person marker on the registry: opening the bell moves it to the newest event, so
+       the badge here and on the «Автор» tab both clear. The rows that were new keep their dot until the
+       list closes, so the author still sees which ones they were. */
+    function bellEvents() {
+        return D.events.filter(function (n) {
+            return n.kind === "notice" || find(n.widget);
+        });
+    }
+    function bellUnread() {
+        if (S.bellSeen || S.author === "none" || S.author === "unreadable") return 0;
+        return Math.min(D.unread, bellEvents().length);
+    }
+    function badgeText(n) {
+        return n > 99 ? "99+" : String(n);
+    }
+    function eventText(n) {
+        var w = find(n.widget);
+        var name = w ? w.name : "";
+        var reason = n.reason && n.reason.indexOf("review.") === 0 ? (n.reason === "review.other" ? "" : T("au.code." + n.reason + ".title")) : n.reason || "";
+        switch (n.kind) {
+            case "version.approved":
+                return T("au.ev.approved", { w: name, v: n.v });
+            case "version.declined":
+                return reason ? T("au.ev.declined", { w: name, v: n.v, reason: reason }) : T("au.ev.declinedBare", { w: name, v: n.v });
+            case "version.unapproved":
+                return T("au.ev.unapproved", { w: name, v: n.v });
+            case "version.revoked":
+                return reason ? T("au.ev.revoked", { w: name, v: n.v, reason: reason }) : T("au.ev.revokedBare", { w: name, v: n.v });
+            case "version.reinstated":
+                return T("au.ev.versionReinstated", { w: name, v: n.v });
+            case "widget.taken-down":
+                return reason ? T("au.ev.takenDown", { w: name, reason: reason }) : T("au.ev.takenDownBare", { w: name });
+            case "widget.reinstated":
+                return T("au.ev.reinstated", { w: name });
+            case "review.reply":
+                return T("au.ev.reply", { w: name, v: n.v });
+            case "notice":
+                return n.title;
+            default:
+                return T("au.ev.unknown", { w: name });
+        }
+    }
+    function eventColor(kind) {
+        if (kind === "version.approved" || kind === "version.reinstated" || kind === "widget.reinstated") return "var(--ok)";
+        if (kind === "review.reply" || kind === "notice") return "var(--info)";
+        return "var(--danger)";
+    }
     function renderBellPop() {
-        var rows = D.notifications
-            .map(function (n) {
-                var color = n.kind === "danger" ? "var(--danger)" : n.kind === "warn" ? "var(--warn)" : "var(--ok)";
-                return (
-                    '<a class="note-row" href="' + n.href + '" data-act="bell-close"><span class="status-dot" style="color:' + color + '"></span><span><span class="ph">' + esc(n.text) + "</span><small>" + fmtDT(n.at) + "</small></span></a>"
-                );
+        var evs = bellEvents();
+        var rows = evs
+            .map(function (n, i) {
+                var isNew = i < S.bellNew;
+                var dot = '<span class="status-dot" style="color:' + eventColor(n.kind) + '"></span>';
+                var text = '<span><span class="' + (n.ph ? "ph" : "") + '">' + esc(eventText(n)) + "</span><small>" + fmtDT(n.at) + (isNew ? ' · <b class="note-new">' + esc(T("au.bell.new")) + "</b>" : "") + "</small></span>";
+                if (n.kind === "notice") return '<a class="note-row' + (isNew ? " is-new" : "") + '" href="' + esc(n.url) + '" target="_blank" rel="noopener" data-act="bell-close">' + dot + text + "</a>";
+                var id = encodeURIComponent(n.widget);
+                var versionKind = n.kind.indexOf("version.") === 0 || n.kind === "review.reply";
+                var href = "#/w/" + id + (versionKind ? "/versions" : "/overview");
+                /* a version's row opens expanded; its conversation is open there whenever it has messages */
+                var open = versionKind ? ' data-open-row="' + esc(n.widget + "@" + n.v) + '"' : "";
+                return '<a class="note-row' + (isNew ? " is-new" : "") + '" href="' + href + '"' + open + ' data-act="bell-close">' + dot + text + "</a>";
             })
             .join("");
-        return '<div class="bell-pop"><h3>' + esc(T("au.bell.title")) + later() + "</h3>" + rows + '<p class="hint" style="padding:6px 8px 2px">' + esc(T("au.bell.hint")) + "</p></div>";
+        if (!evs.length) rows = '<p class="hint" style="padding:6px 8px">' + esc(T("au.bell.empty")) + "</p>";
+        return '<div class="bell-pop"><h3>' + esc(T("au.bell.title")) + "</h3>" + rows + '<p class="hint" style="padding:6px 8px 2px">' + esc(T("au.bell.hint")) + "</p></div>";
+    }
+    /* The «Автор» tab carries the same count, so it is seen from the catalog side too. */
+    function syncTabBadge() {
+        var b = document.getElementById("tab-badge-author");
+        if (!b) return;
+        var n = bellUnread();
+        b.hidden = !n;
+        b.textContent = n ? badgeText(n) : "";
     }
 
     function renderRail(r) {
@@ -1844,10 +1911,15 @@
                 break;
             case "bell":
                 S.bell = !S.bell;
+                if (S.bell) {
+                    S.bellNew = bellUnread();
+                    S.bellSeen = true;
+                } else S.bellNew = 0;
                 render();
                 break;
             case "bell-close":
                 S.bell = false;
+                S.bellNew = 0;
                 break;
             case "new-widget":
                 newWidgetDialog();

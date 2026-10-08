@@ -60,7 +60,13 @@ window.AUTHOR_DATA = (function () {
                     notesEn: "OKX added — seven venues now.\nThe threshold alert can be set per venue.",
                     added: { egress: ["www.okx.com"] },
                     minColibri: "1.4.0",
-                    thread: []
+                    thread: [
+                        {
+                            from: "moderator",
+                            at: ago(0, 3),
+                            body: "Зачем виджету www.okx.com — только публичные ставки фандинга? Ответьте здесь, и мы продолжим проверку."
+                        }
+                    ]
                 },
                 {
                     v: "1.0.0",
@@ -434,11 +440,21 @@ window.AUTHOR_DATA = (function () {
                 }
             ]
         },
-        notifications: [
-            { kind: "warn", text: "Мини-график сделок: версия 1.0.0 ждёт дольше обычного", at: ago(3), href: "#/w/71f0c3d8-2e9a-4b6c-8f17-5a4d0e9b3c21/versions" },
-            { kind: "danger", text: "Алерты объёма: версия 1.0.0 отклонена модератором", at: ago(2, 4), href: "#/w/3c9a6f10-8b2d-4e71-b5f4-91d0e7a2c468/overview" },
-            { kind: "danger", text: "Копи-сигналы сняты модератором", at: ago(6), href: "#/w/0d6c2f85-9a14-4e7b-b3c0-8e51f9a27d46/access" },
-            { kind: "ok", text: "Радар ликвидаций: версия 1.0.0 одобрена", at: ago(31), href: "#/w/liquidation-radar/versions" }
+        /* The author's feed under the bell, newest first. Only moderator decisions, replies, takedowns and
+           Nest's own notices land here — never what the author did. Takedowns and revocations also go
+           out by e-mail. The first `unread` rows are new. */
+        unread: 2,
+        events: [
+            { kind: "review.reply", widget: "funding-monitor", v: "1.1.0", at: ago(0, 3) },
+            { kind: "version.declined", widget: "3c9a6f10-8b2d-4e71-b5f4-91d0e7a2c468", v: "1.0.0", reason: "review.excess-permissions", at: ago(2, 4) },
+            {
+                kind: "widget.taken-down",
+                widget: "0d6c2f85-9a14-4e7b-b3c0-8e51f9a27d46",
+                reason: "В описании обещана доходность, а виджет ведёт в платный канал. Это против правил содержания Nest.",
+                at: ago(6)
+            },
+            { kind: "notice", title: "Панели виджетов: что изменится в следующей версии Colibri", url: "https://example.org/nest/notices", at: ago(12), ph: true },
+            { kind: "version.approved", widget: "liquidation-radar", v: "1.0.0", at: ago(31) }
         ]
     };
 })();
