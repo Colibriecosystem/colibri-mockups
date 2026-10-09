@@ -209,6 +209,19 @@
     function mismatch(w) {
         return !!(w.code && w.code.manifestId !== w.id);
     }
+    /* What the folder's widget.json still says about the widget's name, icon or author. Those live on
+       the widget in Nest now; nothing reads them from the file, so this warns and never blocks. */
+    function legacyFields(w) {
+        return w.code && w.code.legacyFields && w.code.legacyFields.length ? w.code.legacyFields : null;
+    }
+    function legacyRemoveBtn(w) {
+        return '<button class="btn btn-sm" data-act="remove-legacy" data-id="' + esc(w.id) + '">' + esc(T("au.code.legacy.remove")) + "</button>";
+    }
+    /* the one-line form, for the release wizard */
+    function legacyLine(w) {
+        var f = legacyFields(w);
+        return f ? '<div class="banner banner-warn">' + icon("warn") + '<div class="banner-body">' + esc(T("au.wiz.legacy", { fields: f.join(", ") })) + "</div>" + legacyRemoveBtn(w) + "</div>" : "";
+    }
     function phaseOf(w) {
         if (w.state === "takendown") return "takendown";
         if (w.state === "withdrawn") return "withdrawn";
@@ -940,10 +953,16 @@
     function renderCode(w) {
         if (linked(w)) {
             var c = w.code;
+            var legacy = legacyFields(w);
+            var fields = legacy ? legacy.join(", ") : "";
             return (
+                (legacy
+                    ? '<div class="banner banner-warn">' + icon("warn") + '<div class="banner-body"><b>' + esc(T("au.code.legacy.title", { fields: fields })) + "</b> " + esc(T("au.code.legacy.body")) + "</div>" + legacyRemoveBtn(w) + "</div>"
+                    : "") +
                 '<div class="card"><h2 class="sec">' + esc(T("au.code.linked")) + "</h2>" +
                 '<dl class="summary-kv"><dt>' + esc(T("au.code.folder")) + '</dt><dd><a href="#" class="path ph" data-toast="au.toast.folder">' + esc(c.path) + "</a></dd>" +
-                "<dt>widget.json</dt><dd>" + '<span class="chip chip-ok">' + icon("check") + esc(T("au.code.idMatches")) + "</span></dd>" +
+                "<dt>widget.json</dt><dd>" + '<span class="chip chip-ok">' + icon("check") + esc(T("au.code.idMatches")) + "</span>" +
+                (legacy ? ' <span class="chip chip-warn">' + icon("warn") + esc(T("au.code.legacy.chip", { fields: fields })) + "</span>" : "") + "</dd>" +
                 "<dt>" + esc(T("au.code.version")) + '</dt><dd class="mono">' + esc(c.manifestVersion) + "</dd>" +
                 "<dt>" + esc(T("au.code.changed")) + '</dt><dd class="ph">' + fmtDT(c.changedAt) + "</dd></dl>" +
                 '<div class="row-actions"><button class="switch" role="switch" aria-checked="' + !!c.hot + '" data-act="hot" data-id="' + esc(w.id) + '"><i></i>' + esc(T("au.code.hot")) + "</button>" +
@@ -1668,7 +1687,9 @@
             (act && hi ? '<p class="hint" style="margin:6px 0">' + icon("info", "sm") + " " + esc(T("au.wiz.v.recommendMajor." + act)) + "</p>" : "") +
             '<div class="vis">' + radios + "</div>" +
             '<p class="err" id="wiz-v-err" style="margin-top:6px"' + (err && z.choice === "custom" && z.custom ? "" : " hidden") + ">" + esc(err || "") + "</p>" +
-            '<p class="hint" style="margin-top:8px">' + esc(T(z.from ? "au.wiz.rb.written" : "au.wiz.v.written")) + "</p>"
+            '<p class="hint" style="margin-top:8px">' + esc(T(z.from ? "au.wiz.rb.written" : "au.wiz.v.written")) + "</p>" +
+            /* a rollback ships an approved archive and never reads the folder */
+            (z.from ? "" : legacyLine(w))
         );
     }
     function versionOf(w, v) {
@@ -1783,7 +1804,7 @@
                 verdict = T("au.wiz.impact.codeVerdict");
             } else verdict = T("au.wiz.impact.envelopeVerdict");
         }
-        return kv + '<div class="impact"><h4>' + esc(T("au.wiz.impact.title")) + '</h4><ul class="chg">' + items.join("") + '</ul><p class="hint" style="margin-top:6px">' + esc(verdict) + "</p></div>";
+        return kv + '<div class="impact"><h4>' + esc(T("au.wiz.impact.title")) + '</h4><ul class="chg">' + items.join("") + '</ul><p class="hint" style="margin-top:6px">' + esc(verdict) + "</p></div>" + legacyLine(w);
     }
     function wizStep4(w) {
         var z = S.wiz;
@@ -2024,6 +2045,17 @@
                 w.code = null;
                 render();
                 break;
+            case "remove-legacy": {
+                /* only those fields leave widget.json; the icon file stays in the folder */
+                var stripped = legacyFields(w);
+                if (!stripped) break;
+                w.code.legacyFields = [];
+                render();
+                /* an open wizard is left alone by render(), so it is redrawn on its own */
+                if (S.wiz) renderWizard();
+                window.NEST.toast(T("au.toast.legacyRemoved", { fields: stripped.join(", ") }));
+                break;
+            }
             case "draft-from-folder":
                 draftFromFolder(key);
                 break;

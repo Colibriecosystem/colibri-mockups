@@ -300,7 +300,10 @@ window.AUTHOR_DATA = (function () {
                 changedAt: ago(9),
                 hot: true,
                 permissions: ["marketData", "storage"],
-                egress: []
+                egress: [],
+                /* an older folder: its widget.json still names the widget, though the name and the
+                   icon now live on the widget in Nest and nothing reads them from the file (invented) */
+                legacyFields: ["name", "icon"]
             },
             share: "Pb7Kx2Nd9Qw4Ls1Mv8Ry3Tc6Hj0Fz5Ga2Ue7Wo4IkXs",
             versions: [
