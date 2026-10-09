@@ -282,7 +282,7 @@
         "au.listing.nameReview": "Виджет в каталоге: новое название покажется после одобрения модератором." /* NEW */,
         "au.listing.icon": "Иконка" /* NEW */,
         "au.listing.chooseIcon": "Выбрать иконку…" /* = Strings.Nest.AuthorWidget.ChooseIcon */,
-        "au.listing.iconHint": "PNG, JPEG или WebP, до 512 КБ" /* NEW (from Strings.Nest.AuthorWidget.IconPickTitle) */,
+        "au.listing.iconHint": "PNG, JPEG, WebP, GIF, BMP или ICO, до 512 КБ" /* NEW (from Strings.Nest.AuthorWidget.IconPickTitle) */,
         "au.listing.category": "Категория" /* = Strings.Nest.Listing.Field.Category */,
         "au.listing.chooseLater": "Выбрать позже" /* = Strings.Nest.AuthorWidget.New.Category.Later */,
         "au.listing.tags": "Теги" /* = Strings.Nest.Listing.Field.Tags */,
