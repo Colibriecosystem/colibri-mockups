@@ -36,7 +36,11 @@
         uvHistory: false,
         code: null, /* the code dialog on screen: { kind, code, until } */
         redeem: { value: "", error: null, emailSent: false }, /* the «ключ или код» box */
-        recoveryUsed: false /* the author just came back with the recovery code */
+        recoveryUsed: false /* the author just came back with the recovery code */,
+        ld: null /* the Listing form's unsaved draft: one widget's at a time */,
+        lpErr: null /* why the last picture was refused */,
+        pg: { shot: 0, aboutOpen: false } /* the widget page: which picture is large, the long text open */,
+        pgFor: null /* the page dialog: { id, draft } */
     };
     var emptyWidgets = [];
 
@@ -258,14 +262,33 @@
         if (pend && pend.overdue) return "warn";
         return null;
     }
+    /* The first version's checklist. `rec` items are advice: they show and tick like the rest, but the
+       count leaves them out and nothing waits on them — a release is never held. */
     function readiness(w) {
+        var p = pageOf(w);
         return [
             { key: "au.ready.name", done: !!w.name, sec: "listing" },
             { key: "au.ready.icon", done: !!w.iconSet, sec: "listing" },
             { key: "au.ready.category", done: !!w.category, sec: "listing" },
             { key: "au.ready.description", done: !!(w.descRu || w.descEn), sec: "listing" },
-            { key: "au.ready.code", done: linked(w), sec: "code" }
+            { key: "au.ready.code", done: linked(w), sec: "code" },
+            { key: "au.ready.about", done: !!(p.aboutRu || p.aboutEn), sec: "listing", rec: true },
+            { key: "au.ready.shots", done: p.shots.length > 0, sec: "listing", rec: true },
+            { key: "au.ready.links", done: LINKS.some(function (k) {
+                return !!p.links[k];
+            }), sec: "listing", rec: true }
         ];
+    }
+    /* the listing page beyond the card; a widget that never had one reads as empty, never as missing */
+    var LINKS = ["website", "docs", "support", "terms", "telegram", "youtube"];
+    function pageOf(w) {
+        if (!w.page) w.page = {};
+        var p = w.page;
+        p.features = p.features || [];
+        p.shots = p.shots || [];
+        p.links = p.links || {};
+        p.languages = p.languages || [];
+        return p;
     }
     function editorialMissing(w) {
         return !w.everApproved && (!w.category || !(w.descRu || w.descEn));
@@ -321,6 +344,9 @@
         });
         syncBar();
         syncTabBadge();
+        /* the review bar is fixed over the page's foot; a sticky save bar sits just above it */
+        var mb = document.querySelector(".mock-bar");
+        html.style.setProperty("--mockbar", mb && !mb.hidden ? mb.offsetHeight + "px" : "0px");
         var r = route();
         if (S.tab === "catalog") root.innerHTML = renderUserView();
         else if (S.tab !== "author") root.innerHTML = '<div class="placeholder-tab">' + esc(T("au.otherTab")) + "</div>";
@@ -413,6 +439,8 @@
                 return T("au.ev.reply", { w: name, v: n.v });
             case "notice":
                 return n.title;
+            case "listing.moderated":
+                return T("au.ev.listingModerated", { w: name, parts: n.parts, reason: n.reason });
             default:
                 return T("au.ev.unknown", { w: name });
         }
@@ -432,7 +460,7 @@
                 if (n.kind === "notice") return '<a class="note-row' + (isNew ? " is-new" : "") + '" href="' + esc(n.url) + '" target="_blank" rel="noopener" data-act="bell-close">' + dot + text + "</a>";
                 var id = encodeURIComponent(n.widget);
                 var versionKind = n.kind.indexOf("version.") === 0 || n.kind === "review.reply";
-                var href = "#/w/" + id + (versionKind ? "/versions" : "/overview");
+                var href = "#/w/" + id + (versionKind ? "/versions" : n.kind === "listing.moderated" ? "/listing" : "/overview");
                 /* a version's row opens expanded; its conversation is open there whenever it has messages */
                 var open = versionKind ? ' data-open-row="' + esc(n.widget + "@" + n.v) + '"' : "";
                 return '<a class="note-row' + (isNew ? " is-new" : "") + '" href="' + href + '"' + open + ' data-act="bell-close">' + dot + text + "</a>";
@@ -703,16 +731,20 @@
         var left = "";
         if (!w.everApproved) {
             var items = readiness(w);
-            var done = items.filter(function (x) {
+            var required = items.filter(function (x) {
+                return !x.rec;
+            });
+            var done = required.filter(function (x) {
                 return x.done;
             }).length;
             left +=
-                '<div class="card"><h2 class="sec">' + esc(T("au.ready.title")) + ' <span class="dim small">' + done + " / " + items.length + "</span></h2>" +
-                '<div class="progress"><i style="width:' + Math.round((done / items.length) * 100) + '%"></i></div>' +
+                '<div class="card"><h2 class="sec">' + esc(T("au.ready.title")) + ' <span class="dim small">' + done + " / " + required.length + "</span></h2>" +
+                '<div class="progress"><i style="width:' + Math.round((done / required.length) * 100) + '%"></i></div>' +
                 '<ul class="checklist">' +
                 items
                     .map(function (x) {
-                        return '<li class="' + (x.done ? "done" : "") + '"><span class="mark">' + icon("check", "sm") + '</span><span class="lbl">' + esc(T(x.key)) + "</span>" + (x.done ? "<span></span>" : '<a class="btn btn-link btn-sm" href="#/w/' + encodeURIComponent(w.id) + "/" + x.sec + '">' + esc(T("au.ready.fill")) + "</a>") + "</li>";
+                        var rec = x.rec ? ' <span class="rec-chip">' + esc(T("au.ready.recommended")) + "</span>" : "";
+                        return '<li class="' + (x.done ? "done" : "") + (x.rec ? " rec" : "") + '"><span class="mark">' + icon("check", "sm") + '</span><span class="lbl">' + esc(T(x.key)) + rec + "</span>" + (x.done ? "<span></span>" : '<a class="btn btn-link btn-sm" href="#/w/' + encodeURIComponent(w.id) + "/" + x.sec + '">' + esc(T("au.ready.fill")) + "</a>") + "</li>";
                     })
                     .join("") +
                 '</ul><p class="hint" style="margin-top:6px">' + esc(T("au.ready.hint")) + "</p></div>";
@@ -920,33 +952,346 @@
     }
 
     /* ---------- listing ---------- */
+    /* The form's unsaved text lives in a draft, so a re-render — a feature added, a picture uploaded —
+       never eats what is being typed. Pictures are not part of it: each upload, removal or move applies
+       at once, the way the icon does, and the draft stays as it was. */
+    var LANGS = ["ru", "en", "uk", "kk", "tr", "zh", "es", "de"];
+    var ARTS = ["table", "alert", "window", "chart"];
+    function freshDraft(w) {
+        var p = pageOf(w);
+        return {
+            id: w.id,
+            name: w.name,
+            category: w.category || "",
+            tags: w.tags.join(", "),
+            descRu: w.descRu || "",
+            descEn: w.descEn || "",
+            aboutRu: p.aboutRu || "",
+            aboutEn: p.aboutEn || "",
+            features: p.features.map(function (f) {
+                return { titleRu: f.titleRu || "", titleEn: f.titleEn || "", bodyRu: f.bodyRu || "", bodyEn: f.bodyEn || "" };
+            }),
+            video: p.video || "",
+            links: LINKS.reduce(function (o, k) {
+                o[k] = p.links[k] || "";
+                return o;
+            }, {}),
+            languages: p.languages.slice()
+        };
+    }
+    function draftOf(w) {
+        if (!S.ld || S.ld.id !== w.id) S.ld = freshDraft(w);
+        return S.ld;
+    }
+    function draftDirty(w) {
+        return !!S.ld && S.ld.id === w.id && JSON.stringify(S.ld) !== JSON.stringify(freshDraft(w));
+    }
+    function syncDirty(w) {
+        var el = document.getElementById("lp-dirty");
+        if (el && w) el.hidden = !draftDirty(w);
+    }
+    function splitTags(s) {
+        return String(s || "")
+            .split(",")
+            .map(function (t) {
+                return t.trim();
+            })
+            .filter(Boolean);
+    }
+    /* the registry's link rule, said as the author types: https, no credentials, short, and the two
+       channels pinned to their hosts */
+    var LINK_HOSTS = { telegram: /^(t\.me|telegram\.me)$/, youtube: /^((www\.|m\.)?youtube\.com|youtu\.be)$/ };
+    function linkProblem(kind, v) {
+        if (!v) return null;
+        var u;
+        try {
+            u = new URL(v);
+        } catch (e) {
+            return T("au.lp.err.url");
+        }
+        if (u.protocol !== "https:") return T("au.lp.err.https");
+        if (u.username || u.password) return T("au.lp.err.creds");
+        if (v.length > 200) return T("au.lp.err.long");
+        if (LINK_HOSTS[kind] && !LINK_HOSTS[kind].test(u.hostname)) return T("au.lp.err.host." + kind);
+        return null;
+    }
+    function videoProblem(v) {
+        if (!v) return null;
+        return linkProblem("video", v) || (/^https:\/\/((www\.|m\.)?youtube\.com\/(watch\?v=|shorts\/)|youtu\.be\/)[A-Za-z0-9_-]{11}([?&#].*)?$/.test(v) ? null : T("au.lp.err.video"));
+    }
+    function hostOf(url) {
+        try {
+            return new URL(url).hostname.replace(/^www\./, "");
+        } catch (e) {
+            return url;
+        }
+    }
+    /* The long text's whole grammar: headings, bullets and paragraphs. Nothing else is markup — a link
+       or an image in it is shown as the text it is. */
+    function mdBlocks(text) {
+        var out = [];
+        var list = null;
+        String(text || "")
+            .split("\n")
+            .forEach(function (raw) {
+                var line = raw.trim();
+                var m;
+                if (!line) list = null;
+                else if ((m = /^#{1,3}\s+(.*)$/.exec(line))) {
+                    list = null;
+                    out.push({ k: "h", t: m[1] });
+                } else if ((m = /^[-*]\s+(.*)$/.exec(line))) {
+                    if (!list) out.push((list = { k: "ul", items: [] }));
+                    list.items.push(m[1]);
+                } else {
+                    list = null;
+                    out.push({ k: "p", t: line });
+                }
+            });
+        return out;
+    }
+    function mdHtml(text) {
+        return mdBlocks(text)
+            .map(function (b) {
+                if (b.k === "h") return "<h4>" + esc(b.t) + "</h4>";
+                if (b.k === "ul")
+                    return "<ul>" + b.items.map(function (i) {
+                        return "<li>" + esc(i) + "</li>";
+                    }).join("") + "</ul>";
+                return "<p>" + esc(b.t) + "</p>";
+            })
+            .join("");
+    }
+    /* pictures are drawn, not files: a reviewer sees where they go and how they sit, not a real widget */
+    function shotArt(art) {
+        var rows = "";
+        for (var i = 0; i < 6; i++) rows += '<i class="r"><b></b><b class="' + (i % 3 === 1 ? "neg" : "pos") + '" style="width:' + (72 - i * 9) + '%"></b></i>';
+        if (art === "alert") return '<div class="art art-table art-dim">' + rows + '<div class="art-pop">' + icon("bell", "sm") + "<i></i><i></i></div></div>";
+        if (art === "window") return '<div class="art art-window"><div class="art-bar"><i></i><i></i><i></i></div><div class="art-table">' + rows + "</div></div>";
+        if (art === "chart") {
+            var bars = "";
+            for (var j = 0; j < 12; j++) bars += '<i style="height:' + (18 + ((j * 37) % 72)) + '%"></i>';
+            return '<div class="art art-chart">' + bars + "</div>";
+        }
+        return '<div class="art art-table">' + rows + "</div>";
+    }
+    function coverArt(w, name) {
+        return '<div class="cover-art" style="--c:' + esc(w.color || "#4a6b8a") + '">' + wicon(w, true) + "<b>" + esc(name || w.name) + "</b></div>";
+    }
+    function cardPreview(w, d) {
+        return (
+            '<div class="preview-row">' + wicon(w) +
+            '<div style="min-width:0"><div class="t">' + esc(d.name || w.name) + ' <span class="dim small" style="font-weight:400">' + esc(D.author.name) + '</span></div><div class="d">' + esc(d.descRu || T("au.listing.noDesc")) + "</div></div>" +
+            '<span class="btn btn-sm btn-fetch">' + esc(T("au.install")) + "</span></div>"
+        );
+    }
+    function featureRow(w, f, i) {
+        var data = ' data-id="' + esc(w.id) + '" data-i="' + i + '"';
+        return (
+            '<div class="lp-feature"><span class="lp-feature-no">' + (i + 1) + '</span><div class="lp-feature-grid">' +
+            '<input class="input" data-ldf="' + i + ':titleRu" maxlength="60" placeholder="' + esc(T("au.lp.featureTitle", { lang: "RU" })) + '" value="' + esc(f.titleRu) + '"/>' +
+            '<input class="input" data-ldf="' + i + ':titleEn" maxlength="60" placeholder="' + esc(T("au.lp.featureTitle", { lang: "EN" })) + '" value="' + esc(f.titleEn) + '"/>' +
+            '<textarea class="textarea" data-ldf="' + i + ':bodyRu" maxlength="280" placeholder="' + esc(T("au.lp.featureBody", { lang: "RU" })) + '">' + esc(f.bodyRu) + "</textarea>" +
+            '<textarea class="textarea" data-ldf="' + i + ':bodyEn" maxlength="280" placeholder="' + esc(T("au.lp.featureBody", { lang: "EN" })) + '">' + esc(f.bodyEn) + "</textarea>" +
+            '</div><div class="lp-tools lp-tools-col">' +
+            '<button class="btn btn-icon btn-sm" data-act="lp-feature-up"' + data + (i === 0 ? " disabled" : "") + ' title="' + esc(T("au.lp.featureUp")) + '">' + icon("arrow-up", "sm") + "</button>" +
+            '<button class="btn btn-icon btn-sm" data-act="lp-feature-remove"' + data + ' title="' + esc(T("au.lp.featureRemove")) + '">' + icon("x", "sm") + "</button>" +
+            "</div></div>"
+        );
+    }
+    function packageCard(w) {
+        var c = current(w);
+        var live = w.live || (w.code ? { permissions: w.code.permissions, egress: w.code.egress } : null);
+        return (
+            '<div class="card"><h2 class="sec">' + esc(T("au.lp.package")) + '</h2><dl class="summary-kv lp-kv">' +
+            "<dt>" + esc(T("au.lp.pkg.version")) + "</dt><dd>" + (c ? '<span class="mono">' + esc(c.v) + "</span>" : "—") + "</dd>" +
+            (w.sizeBytes ? "<dt>" + esc(T("au.lp.pkg.size")) + "</dt><dd>" + esc(fmtBytes(w.sizeBytes)) + "</dd>" : "") +
+            "<dt>" + esc(T("au.lp.pkg.perms")) + "</dt><dd>" + (live && live.permissions.length ? live.permissions.map(function (p) {
+                return esc(scopeLabel(p));
+            }).join("<br/>") : "—") + "</dd>" +
+            "<dt>" + esc(T("au.lp.pkg.hosts")) + '</dt><dd class="mono small">' + (live && live.egress.length ? live.egress.map(esc).join("<br/>") : "—") + "</dd>" +
+            '</dl><p class="hint" style="margin-top:6px">' + esc(T("au.lp.pkgHint")) + "</p></div>"
+        );
+    }
     function renderListing(w) {
+        var d = draftOf(w);
+        var p = pageOf(w);
+        var idAttr = ' data-id="' + esc(w.id) + '"';
         var catalogStanding = w.everApproved && w.visibility === "catalog";
         var cats = ["", "alerts", "analytics", "market-data", "trading", "portfolio", "research", "productivity", "other"];
-        var form =
-            '<div class="card"><div class="form-grid">' +
-            "<label>" + esc(T("au.listing.name")) + '</label><div class="ctl"><input class="input" id="l-name" value="' + esc(w.name) + '" maxlength="80"/>' + (catalogStanding ? '<span class="hint">' + esc(T("au.listing.nameReview")) + "</span>" : "") + "</div>" +
-            "<label>" + esc(T("au.listing.icon")) + '</label><div class="ctl"><div class="row-actions">' + wicon(w) + '<button class="btn btn-sm" data-act="choose-icon" data-id="' + esc(w.id) + '">' + esc(T("au.listing.chooseIcon")) + '</button><span class="hint">' + esc(T("au.listing.iconHint")) + "</span></div></div>" +
-            "<label>" + esc(T("au.listing.category")) + '</label><div class="ctl"><select class="select" id="l-cat">' +
+        var c = current(w);
+        var basics =
+            '<div class="card"><h2 class="sec"><span class="lp-no">01</span>' + esc(T("au.lp.basics")) + '</h2><div class="form-grid">' +
+            "<label>" + esc(T("au.listing.name")) + '</label><div class="ctl"><input class="input" data-ld="name" value="' + esc(d.name) + '" maxlength="80"/>' + (catalogStanding ? '<span class="hint">' + esc(T("au.listing.nameReview")) + "</span>" : "") + "</div>" +
+            "<label>" + esc(T("au.listing.icon")) + '</label><div class="ctl"><div class="row-actions">' + wicon(w) + '<button class="btn btn-sm" data-act="choose-icon"' + idAttr + ">" + esc(T("au.listing.chooseIcon")) + '</button><span class="hint">' + esc(T("au.listing.iconHint")) + "</span></div></div>" +
+            "<label>" + esc(T("au.lp.version")) + '</label><div class="ctl"><div class="ro">' + (c ? '<span class="mono">' + esc(c.v) + "</span>" : "—") + ' <span class="hint">' + esc(T("au.lp.versionHint")) + "</span></div></div>" +
+            "<label>" + esc(T("au.listing.category")) + '</label><div class="ctl"><select class="select" data-ld="category">' +
             cats
                 .map(function (k) {
-                    return '<option value="' + k + '"' + ((w.category || "") === k ? " selected" : "") + ">" + esc(k ? catLabel(k) : T("au.listing.chooseLater")) + "</option>";
+                    return '<option value="' + k + '"' + (d.category === k ? " selected" : "") + ">" + esc(k ? catLabel(k) : T("au.listing.chooseLater")) + "</option>";
                 })
                 .join("") +
             "</select></div>" +
-            "<label>" + esc(T("au.listing.tags")) + '</label><div class="ctl"><input class="input" id="l-tags" value="' + esc(w.tags.join(", ")) + '"/><span class="hint">' + esc(T("au.listing.tagsHint")) + "</span></div>" +
-            "<label>" + esc(T("au.listing.descRu")) + '</label><div class="ctl"><textarea class="textarea" id="l-ru" maxlength="400" data-count="400">' + esc(w.descRu) + '</textarea><span class="counter">' + w.descRu.length + " / 400</span></div>" +
-            "<label>" + esc(T("au.listing.descEn")) + '</label><div class="ctl"><textarea class="textarea" id="l-en" maxlength="400" data-count="400">' + esc(w.descEn) + '</textarea><span class="counter">' + w.descEn.length + " / 400</span></div>" +
-            '<span></span><div class="row-actions"><button class="btn btn-primary" data-act="save-listing" data-id="' + esc(w.id) + '">' + esc(T("au.save")) + '</button><button class="btn" data-act="revert-listing">' + esc(T("au.listing.revert")) + "</button></div>" +
+            "<label>" + esc(T("au.listing.tags")) + '</label><div class="ctl"><input class="input" data-ld="tags" value="' + esc(d.tags) + '"/><span class="hint">' + esc(T("au.listing.tagsHint")) + "</span></div>" +
+            "<label>" + esc(T("au.lp.languages")) + '</label><div class="ctl"><div class="lp-langs">' +
+            LANGS.map(function (l) {
+                return '<button type="button" class="lang-chip" data-act="lp-lang"' + idAttr + ' data-v="' + l + '" aria-pressed="' + (d.languages.indexOf(l) >= 0) + '">' + l.toUpperCase() + "</button>";
+            }).join("") +
+            '</div><span class="hint">' + esc(T("au.lp.languagesHint")) + "</span></div>" +
+            "<label>" + esc(T("au.listing.descRu")) + '</label><div class="ctl"><textarea class="textarea" data-ld="descRu" maxlength="400" data-count="400">' + esc(d.descRu) + '</textarea><span class="counter">' + d.descRu.length + " / 400</span></div>" +
+            "<label>" + esc(T("au.listing.descEn")) + '</label><div class="ctl"><textarea class="textarea" data-ld="descEn" maxlength="400" data-count="400">' + esc(d.descEn) + '</textarea><span class="counter">' + d.descEn.length + " / 400</span></div>" +
+            '<span></span><span class="hint">' + esc(T("au.lp.shortHint")) + "</span>" +
             "</div></div>";
-        var preview =
-            '<div class="card later"><h2 class="sec">' + esc(T("au.listing.preview")) + later() + '</h2><div class="preview-row">' + wicon(w) +
-            '<div style="min-width:0"><div class="t">' + wname(w) + ' <span class="dim small" style="font-weight:400">' + esc(D.author.name) + '</span></div><div class="d">' + esc(w.descRu || T("au.listing.noDesc")) + "</div></div>" +
-            '<span class="btn btn-sm btn-fetch">' + esc(T("au.install")) + "</span></div>" +
-            '<p class="hint" style="margin-top:6px">' + esc(T("au.listing.previewHint")) + "</p></div>" +
-            '<div class="card later"><h2 class="sec">' + esc(T("au.listing.media")) + later() + '</h2><div class="media-slots"><div>' + esc(T("au.listing.addShot")) + "</div><div>" + esc(T("au.listing.addShot")) + "</div><div>" + esc(T("au.listing.addVideo")) + "</div></div>" +
-            '<p class="hint" style="margin-top:6px">' + esc(T("au.listing.mediaHint")) + "</p></div>";
-        return '<div class="banner banner-info">' + icon("info") + '<div class="banner-body">' + esc(T("au.listing.hint")) + "</div></div>" + '<div class="grid-2"><div>' + form + '</div><div class="stack">' + preview + "</div></div>";
+        var about =
+            '<div class="card"><h2 class="sec"><span class="lp-no">02</span>' + esc(T("au.lp.about")) + "</h2>" +
+            '<p class="hint" style="margin-bottom:8px">' + esc(T("au.lp.aboutHint")) + "</p>" +
+            '<label class="field"><span>' + esc(T("au.lp.aboutRu")) + '</span><textarea class="textarea lp-long" data-ld="aboutRu" maxlength="4000" data-count="4000">' + esc(d.aboutRu) + '</textarea><span class="counter">' + d.aboutRu.length + " / 4000</span></label>" +
+            '<label class="field" style="margin-top:8px"><span>' + esc(T("au.lp.aboutEn")) + '</span><textarea class="textarea lp-long" data-ld="aboutEn" maxlength="4000" data-count="4000">' + esc(d.aboutEn) + '</textarea><span class="counter">' + d.aboutEn.length + " / 4000</span></label>" +
+            '<h3 class="lp-sub">' + esc(T("au.lp.features")) + ' <span class="dim small">' + d.features.length + " / 6</span></h3>" +
+            '<p class="hint" style="margin-bottom:6px">' + esc(T("au.lp.featuresHint")) + "</p>" +
+            d.features.map(function (f, i) {
+                return featureRow(w, f, i);
+            }).join("") +
+            (d.features.length < 6 ? '<button class="btn btn-sm" data-act="lp-feature-add"' + idAttr + ">" + icon("plus", "sm") + esc(T("au.lp.featureAdd")) + "</button>" : '<p class="hint">' + esc(T("au.lp.featuresFull")) + "</p>") +
+            "</div>";
+        var shots = p.shots
+            .map(function (s, i) {
+                var data = idAttr + ' data-i="' + i + '"';
+                return (
+                    '<div class="lp-shot"><div class="shot">' + shotArt(s.art) + '</div><div class="lp-tools">' +
+                    '<span class="dim small">' + (i + 1) + '</span><span class="grow"></span>' +
+                    '<button class="btn btn-icon btn-sm" data-act="lp-shot-move"' + data + ' data-d="-1"' + (i === 0 ? " disabled" : "") + ' title="' + esc(T("au.lp.shotLeft")) + '">' + icon("arrow-left", "sm") + "</button>" +
+                    '<button class="btn btn-icon btn-sm" data-act="lp-shot-move"' + data + ' data-d="1"' + (i === p.shots.length - 1 ? " disabled" : "") + ' title="' + esc(T("au.lp.shotRight")) + '">' + icon("arrow-right", "sm") + "</button>" +
+                    '<button class="btn btn-icon btn-sm" data-act="lp-shot-remove"' + data + ' title="' + esc(T("au.lp.shotRemove")) + '">' + icon("trash", "sm") + "</button></div></div>"
+                );
+            })
+            .join("");
+        var vp = videoProblem(d.video);
+        var media =
+            '<div class="card"><h2 class="sec"><span class="lp-no">03</span>' + esc(T("au.lp.media")) + "</h2>" +
+            '<p class="hint" style="margin-bottom:8px">' + esc(T(catalogStanding ? "au.lp.mediaHintCatalog" : "au.lp.mediaHint")) + "</p>" +
+            '<h3 class="lp-sub" style="margin-top:0">' + esc(T("au.lp.shots")) + ' <span class="dim small">' + p.shots.length + " / 5</span></h3>" +
+            '<div class="lp-shots">' + shots + (p.shots.length < 5 ? '<button class="lp-add" data-act="lp-shot-add"' + idAttr + ">" + icon("image") + "<span>" + esc(T("au.lp.shotAdd")) + "</span></button>" : "") + "</div>" +
+            '<p class="hint" style="margin-top:6px">' + esc(T("au.lp.shotRule")) + "</p>" +
+            (S.lpErr ? '<p class="err">' + esc(S.lpErr) + "</p>" : "") +
+            '<div class="mock-examples">' + esc(T("au.lp.examples")) + ' <button class="btn btn-link btn-sm" data-act="lp-shot-bad"' + idAttr + ' data-why="format">' + esc(T("au.lp.example.gif")) + '</button> <button class="btn btn-link btn-sm" data-act="lp-shot-bad"' + idAttr + ' data-why="size">' + esc(T("au.lp.example.big")) + "</button></div>" +
+            '<h3 class="lp-sub">' + esc(T("au.lp.cover")) + "</h3>" +
+            (p.cover
+                ? '<div class="lp-cover">' + coverArt(w, d.name) + '<div class="row-actions" style="margin-top:6px"><button class="btn btn-sm" data-act="lp-cover-set"' + idAttr + ">" + esc(T("au.lp.coverReplace")) + '</button><button class="btn btn-sm" data-act="lp-cover-remove"' + idAttr + ">" + esc(T("au.lp.coverRemove")) + "</button></div></div>"
+                : '<button class="lp-add lp-add-cover" data-act="lp-cover-set"' + idAttr + ">" + icon("image") + "<span>" + esc(T("au.lp.coverAdd")) + "</span></button>") +
+            '<p class="hint" style="margin-top:6px">' + esc(T("au.lp.coverRule")) + "</p>" +
+            '<h3 class="lp-sub">' + esc(T("au.lp.video")) + "</h3>" +
+            '<div class="ctl lp-ctl"><input class="input" data-ld="video" data-link="video" placeholder="https://www.youtube.com/watch?v=…" value="' + esc(d.video) + '"/>' +
+            '<span class="err" data-err-for="video"' + (vp ? "" : " hidden") + ">" + esc(vp || "") + '</span><span class="hint">' + esc(T("au.lp.videoHint")) + "</span></div>" +
+            "</div>";
+        var links =
+            '<div class="card"><h2 class="sec"><span class="lp-no">04</span>' + esc(T("au.lp.links")) + '</h2><div class="form-grid">' +
+            LINKS.map(function (k) {
+                var prob = linkProblem(k, d.links[k]);
+                return (
+                    "<label>" + esc(T("au.lp.link." + k)) + '</label><div class="ctl"><input class="input" data-ld="link:' + k + '" data-link="' + k + '" placeholder="' + esc(T("au.lp.link." + k + ".ph")) + '" value="' + esc(d.links[k]) + '"/>' +
+                    '<span class="err" data-err-for="' + k + '"' + (prob ? "" : " hidden") + ">" + esc(prob || "") + "</span></div>"
+                );
+            }).join("") +
+            '</div><p class="hint" style="margin-top:6px">' + esc(T("au.lp.linksHint")) + "</p></div>";
+        var save =
+            '<div class="lp-save"><span class="lp-dirty" id="lp-dirty"' + (draftDirty(w) ? "" : " hidden") + ">" + icon("pencil", "sm") + " " + esc(T("au.lp.unsaved")) + '</span><span class="grow"></span>' +
+            '<button class="btn" data-act="revert-listing"' + idAttr + ">" + esc(T("au.listing.revert")) + '</button><button class="btn btn-primary" data-act="save-listing"' + idAttr + ">" + esc(T("au.save")) + "</button></div>";
+        var side =
+            '<div class="card"><h2 class="sec">' + esc(T("au.listing.preview")) + '</h2><div id="lp-card">' + cardPreview(w, d) + "</div>" +
+            '<p class="hint" style="margin-top:6px">' + esc(T("au.listing.previewHint")) + "</p>" +
+            '<button class="btn" style="margin-top:8px" data-act="lp-preview"' + idAttr + ">" + icon("eye") + esc(T("au.lp.pagePreview")) + "</button></div>" +
+            packageCard(w);
+        return (
+            '<div class="banner banner-info">' + icon("info") + '<div class="banner-body">' + esc(T("au.listing.hint")) + "</div></div>" +
+            '<div class="grid-2"><div class="stack">' + basics + about + media + links + save + '</div><div class="stack lp-side">' + side + "</div></div>"
+        );
+    }
+
+    /* ---------- the widget's page, as a user sees it ---------- */
+    /* One renderer for the author's preview (the unsaved draft) and the user's page (what is saved):
+       anything absent renders as nothing, never as an empty box. */
+    function savedView(w) {
+        var p = pageOf(w);
+        return { name: w.name, category: w.category, tags: w.tags, descRu: w.descRu, aboutRu: p.aboutRu || "", features: p.features, video: p.video || "", links: p.links, languages: p.languages };
+    }
+    function draftView(w) {
+        var d = draftOf(w);
+        return { name: d.name, category: d.category, tags: splitTags(d.tags), descRu: d.descRu, aboutRu: d.aboutRu, features: d.features, video: videoProblem(d.video) ? "" : d.video, links: d.links, languages: d.languages };
+    }
+    var LINK_ICON = { website: "globe", docs: "template", support: "message", terms: "shield", telegram: "send", youtube: "play" };
+    function renderPage(w, v) {
+        var p = pageOf(w);
+        var c = current(w);
+        var sel = Math.min(S.pg.shot, Math.max(0, p.shots.length - 1));
+        var hero =
+            (p.cover ? '<div class="pg-cover">' + coverArt(w, v.name) + "</div>" : "") +
+            '<div class="pg-hero">' + wicon(w, true) +
+            '<div style="min-width:0"><h2>' + esc(v.name) + (c ? ' <span class="by mono">' + esc(c.v) + "</span>" : "") + '</h2><span class="dim small">' + esc(D.author.name) + (v.category ? " · " + esc(catLabel(v.category)) : "") + "</span>" +
+            (v.tags.length ? '<div class="pg-tags">' + v.tags.map(function (t) {
+                return '<span class="chip">' + esc(t) + "</span>";
+            }).join("") + "</div>" : "") +
+            '</div><span class="btn btn-fetch">' + esc(T("au.install")) + "</span></div>" +
+            (v.descRu ? '<p class="pg-short">' + esc(v.descRu) + "</p>" : "");
+        var gallery = "";
+        if (p.shots.length || v.video) {
+            var thumbs =
+                p.shots.map(function (s, i) {
+                    return '<button class="pg-thumb' + (i === sel ? " on" : "") + '" data-act="pg-shot" data-i="' + i + '" title="' + esc(T("au.pg.shotN", { n: i + 1 })) + '"><div class="shot">' + shotArt(s.art) + "</div></button>";
+                }).join("") +
+                (v.video ? '<button class="pg-thumb pg-video" data-act="pg-video" title="' + esc(v.video) + '">' + icon("play") + "<span>" + esc(T("au.pg.video")) + "</span></button>" : "");
+            gallery =
+                '<div class="pg-gallery">' +
+                (p.shots.length ? '<div class="shot pg-big">' + shotArt(p.shots[sel].art) + '<span class="pg-count">' + (sel + 1) + " / " + p.shots.length + "</span></div>" : "") +
+                '<div class="pg-thumbs">' + thumbs + "</div></div>";
+        }
+        var about = v.aboutRu
+            ? '<section class="pg-sec"><h3>' + esc(T("au.pg.about")) + '</h3><div class="pg-about' + (S.pg.aboutOpen ? " open" : "") + '">' + mdHtml(v.aboutRu) + "</div>" +
+              '<button class="btn btn-link btn-sm pg-more" data-act="pg-about">' + esc(T(S.pg.aboutOpen ? "au.pg.less" : "au.pg.more")) + "</button></section>"
+            : "";
+        var feats = v.features.filter(function (f) {
+            return f.titleRu || f.bodyRu;
+        });
+        var features = feats.length
+            ? '<section class="pg-sec"><h3>' + esc(T("au.pg.features")) + '</h3><div class="pg-features">' + feats.map(function (f) {
+                  return '<div class="pg-feature"><b>' + esc(f.titleRu) + "</b><p>" + esc(f.bodyRu) + "</p></div>";
+              }).join("") + "</div></section>"
+            : "";
+        var links = LINKS.filter(function (k) {
+            return v.links[k] && !linkProblem(k, v.links[k]);
+        }).map(function (k) {
+            return '<a href="#" class="pg-link" data-act="pg-link" title="' + esc(v.links[k]) + '">' + icon(LINK_ICON[k], "sm") + "<span>" + esc(T("au.lp.link." + k)) + "</span><small>" + esc(hostOf(v.links[k])) + "</small></a>";
+        }).join("");
+        var live = w.live || (w.code ? { permissions: w.code.permissions, egress: w.code.egress } : { permissions: [], egress: [] });
+        var aside =
+            (links ? '<div class="pg-box"><h4>' + esc(T("au.pg.links")) + "</h4>" + links + "</div>" : "") +
+            (v.languages.length ? '<div class="pg-box"><h4>' + esc(T("au.pg.languages")) + '</h4><div class="pg-tags">' + v.languages.map(function (l) {
+                return '<span class="chip">' + esc(l.toUpperCase()) + "</span>";
+            }).join("") + "</div></div>" : "") +
+            '<div class="pg-box"><h4>' + esc(T("au.pg.access")) + "</h4>" +
+            (live.permissions.length ? '<ul class="pg-perms">' + live.permissions.map(function (x) {
+                return "<li>" + esc(scopeLabel(x)) + "</li>";
+            }).join("") + "</ul>" : '<p class="dim small">—</p>') +
+            (live.egress.length ? '<p class="dim small" style="margin-top:4px">' + esc(T("au.pg.hosts", { n: live.egress.length })) + "</p>" : "") +
+            "</div>";
+        return '<div class="pg">' + hero + '<div class="pg-cols"><div class="pg-col">' + gallery + about + features + '</div><aside class="pg-aside">' + aside + "</aside></div></div>";
+    }
+    function pageDialog(w, fromDraft) {
+        S.dlg = "page";
+        S.pg = { shot: 0, aboutOpen: false };
+        S.pgFor = { id: w.id, draft: fromDraft };
+        drawPage();
+    }
+    function drawPage() {
+        var w = find(S.pgFor.id);
+        if (!w) return closeDialog();
+        var v = S.pgFor.draft ? draftView(w) : savedView(w);
+        openDialog(
+            "page",
+            dlgHead(T(S.pgFor.draft ? "au.pg.previewTitle" : "au.pg.title")) +
+                (S.pgFor.draft ? '<div class="banner banner-info" style="margin-bottom:10px">' + icon("eye") + '<div class="banner-body">' + esc(T("au.pg.previewBanner")) + "</div></div>" : "") +
+                renderPage(w, v)
+        );
     }
 
     /* ---------- code ---------- */
@@ -1428,6 +1773,7 @@
             "</div>" +
             '<div class="card listing"><div class="row-actions">' + wicon(f, true) + "<div><h2>" + esc(f.name) + ' <span class="by mono">' + esc(served.v) + '</span></h2><span class="dim small">' + esc(D.author.name) + " · " + esc(catLabel(f.category)) + "</span></div></div>" +
             '<p style="margin-top:8px">' + esc(f.descRu) + "</p>" +
+            uvPagePeek(f) +
             block +
             historyHtml +
             (waiting ? '<div class="impact" style="margin-top:10px"><h4>' + icon("shield", "sm") + " " + esc(T("au.uv.consent.title")) + '</h4><p class="dim small">' + esc(T("au.uv.consent.body", { host: "www.okx.com" })) + "</p></div>" : "") +
@@ -1436,6 +1782,17 @@
             (waiting ? '<div class="row-actions" style="margin-top:12px">' + updateBtn("", T("au.uv.updateTo", { v: served.v })) + "</div>" : "") +
             "</div></div>"
         );
+    }
+
+    /* the listing card's glimpse of the page: the pictures in a strip, and the way to the whole page */
+    function uvPagePeek(w) {
+        var p = pageOf(w);
+        var strip = p.shots.length
+            ? '<div class="uv-peek">' + p.shots.slice(0, 3).map(function (s) {
+                  return '<div class="shot">' + shotArt(s.art) + "</div>";
+              }).join("") + "</div>"
+            : "";
+        return strip + '<button class="btn btn-sm" style="margin-top:8px" data-act="lp-page" data-id="' + esc(w.id) + '">' + icon("eye", "sm") + esc(T("au.uv.openPage")) + "</button>";
     }
 
     /* ================================================================== dialogs */
@@ -2021,7 +2378,87 @@
                 saveListing(w);
                 break;
             case "revert-listing":
+                S.ld = null;
                 render();
+                break;
+            case "lp-lang": {
+                var langs = draftOf(w).languages;
+                var at = langs.indexOf(el.getAttribute("data-v"));
+                if (at >= 0) langs.splice(at, 1);
+                else langs.push(el.getAttribute("data-v"));
+                render();
+                break;
+            }
+            case "lp-feature-add":
+                draftOf(w).features.push({ titleRu: "", titleEn: "", bodyRu: "", bodyEn: "" });
+                render();
+                break;
+            case "lp-feature-remove":
+                draftOf(w).features.splice(Number(el.getAttribute("data-i")), 1);
+                render();
+                break;
+            case "lp-feature-up": {
+                var fs = draftOf(w).features;
+                var fi = Number(el.getAttribute("data-i"));
+                fs.splice(fi - 1, 0, fs.splice(fi, 1)[0]);
+                render();
+                break;
+            }
+            /* pictures apply at once, like the icon; the form's unsaved text is left as it was */
+            case "lp-shot-add": {
+                var shots = pageOf(w).shots;
+                shots.push({ rev: fakeHash(w.id + shots.length + Date.now()).slice(0, 6), art: ARTS[(shots.length + 3) % ARTS.length] });
+                S.lpErr = null;
+                render();
+                window.NEST.toast(T("au.toast.shotAdded"));
+                break;
+            }
+            case "lp-shot-remove":
+                pageOf(w).shots.splice(Number(el.getAttribute("data-i")), 1);
+                render();
+                window.NEST.toast(T("au.toast.shotRemoved"));
+                break;
+            case "lp-shot-move": {
+                var ss = pageOf(w).shots;
+                var si = Number(el.getAttribute("data-i"));
+                ss.splice(si + Number(el.getAttribute("data-d")), 0, ss.splice(si, 1)[0]);
+                render();
+                break;
+            }
+            case "lp-shot-bad":
+                S.lpErr = T(el.getAttribute("data-why") === "size" ? "au.lp.err.shotSize" : "au.lp.err.shotFormat");
+                render();
+                break;
+            case "lp-cover-set":
+                pageOf(w).cover = true;
+                render();
+                window.NEST.toast(T("au.toast.coverSaved"));
+                break;
+            case "lp-cover-remove":
+                pageOf(w).cover = false;
+                render();
+                window.NEST.toast(T("au.toast.coverRemoved"));
+                break;
+            case "lp-preview":
+                pageDialog(w, true);
+                break;
+            case "lp-page":
+                pageDialog(w, false);
+                break;
+            case "pg-shot":
+                S.pg.shot = Number(el.getAttribute("data-i"));
+                drawPage();
+                break;
+            case "pg-about":
+                S.pg.aboutOpen = !S.pg.aboutOpen;
+                drawPage();
+                break;
+            case "pg-video":
+                window.NEST.toast(T("au.toast.videoOpens"));
+                break;
+            case "pg-link":
+                e.preventDefault();
+                window.NEST.toast(T("au.toast.linkOpens"));
                 break;
             case "choose-icon":
                 w.iconSet = true;
@@ -2326,6 +2763,28 @@
             var counter = el.parentNode.querySelector(".counter");
             if (counter) counter.textContent = el.value.length + " / " + el.getAttribute("data-count");
         }
+        /* the Listing form: the draft, the card preview and a link's verdict follow every keystroke,
+           without a re-render that would take the caret away */
+        var ld = el.getAttribute("data-ld");
+        var ldf = el.getAttribute("data-ldf");
+        if ((ld || ldf) && S.ld) {
+            var lw = find(S.ld.id);
+            if (ld && ld.indexOf("link:") === 0) S.ld.links[ld.slice(5)] = el.value;
+            else if (ld) S.ld[ld] = el.value;
+            else S.ld.features[Number(ldf.split(":")[0])][ldf.split(":")[1]] = el.value;
+            var card = document.getElementById("lp-card");
+            if (card && lw) card.innerHTML = cardPreview(lw, S.ld);
+            var kind = el.getAttribute("data-link");
+            if (kind) {
+                var verdict = kind === "video" ? videoProblem(el.value.trim()) : linkProblem(kind, el.value.trim());
+                var errEl = el.parentNode.querySelector('[data-err-for="' + kind + '"]');
+                if (errEl) {
+                    errEl.hidden = !verdict;
+                    errEl.textContent = verdict || "";
+                }
+            }
+            syncDirty(lw);
+        }
     }
     function focusEnd(id) {
         setTimeout(function () {
@@ -2398,18 +2857,37 @@
         go("#/w/" + encodeURIComponent(id) + "/overview");
         window.NEST.toast(T("au.toast.draftFromFolder"));
     }
+    /* One save sends the whole form. A link or a video the registry would refuse keeps the form open and
+       says which; everything else applies at once — only a catalog widget's new name waits. */
     function saveListing(w) {
-        var name = document.getElementById("l-name").value.trim();
-        w.category = document.getElementById("l-cat").value || null;
-        w.tags = document
-            .getElementById("l-tags")
-            .value.split(",")
-            .map(function (s) {
-                return s.trim();
-            })
-            .filter(Boolean);
-        w.descRu = document.getElementById("l-ru").value;
-        w.descEn = document.getElementById("l-en").value;
+        var d = draftOf(w);
+        var bad = LINKS.filter(function (k) {
+            return linkProblem(k, d.links[k]);
+        });
+        if (videoProblem(d.video)) bad.unshift("video");
+        if (bad.length) {
+            window.NEST.toast(T("au.toast.listingBad"));
+            var first = document.querySelector('[data-link="' + bad[0] + '"]');
+            if (first) first.focus();
+            return;
+        }
+        var name = d.name.trim();
+        w.category = d.category || null;
+        w.tags = splitTags(d.tags);
+        w.descRu = d.descRu;
+        w.descEn = d.descEn;
+        var p = pageOf(w);
+        p.aboutRu = d.aboutRu;
+        p.aboutEn = d.aboutEn;
+        p.features = d.features.filter(function (f) {
+            return f.titleRu || f.titleEn || f.bodyRu || f.bodyEn;
+        });
+        p.video = d.video.trim();
+        LINKS.forEach(function (k) {
+            p.links[k] = d.links[k].trim();
+        });
+        p.languages = d.languages.slice();
+        S.ld = null;
         var waits = false;
         if (name && name !== w.name) {
             if (w.everApproved && w.visibility === "catalog") {

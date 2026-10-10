@@ -80,7 +80,36 @@ window.AUTHOR_DATA = (function () {
                     thread: []
                 }
             ],
-            stats: { installs: 412, active7: 268, adoption: [{ v: "1.0.0", share: 100 }], errors: 3 }
+            stats: { installs: 412, active7: 268, adoption: [{ v: "1.0.0", share: 100 }], errors: 3 },
+            /* The listing page beyond the card — all invented: the long text, the features, the pictures,
+               the video and the links. Pictures are drawn by the page, not files: `art` names the drawing. */
+            page: {
+                aboutRu:
+                    "## Что показывает\nСтавки финансирования шести бирж в одной таблице: текущая, прогноз и в годовых. Сверху — то, что платит больше всего в любую сторону.\n\n## Алерты\n- Порог в годовых — общий или свой для каждой биржи\n- Звук и окно терминала, когда порог пройден\n- Обратный отсчёт до расчёта в каждой строке\n\n## Где работает\nНа панели рядом со стаканом и в отдельном окне — например, на втором мониторе.",
+                aboutEn:
+                    "## What it shows\nFunding rates of six venues in one table: current, predicted and annualized. The top rows pay the most either way.\n\n## Alerts\n- An annualized threshold, shared or per venue\n- A sound and a terminal popup when it is crossed\n- A countdown to settlement on every row\n\n## Where it runs\nOn a panel beside the order book, or in its own window — on a second monitor, say.",
+                features: [
+                    { titleRu: "Шесть бирж в одной таблице", titleEn: "Six venues in one table", bodyRu: "Binance, Bybit, Gate, KuCoin, Kraken и Hyperliquid — без переключения вкладок.", bodyEn: "Binance, Bybit, Gate, KuCoin, Kraken and Hyperliquid — no tab switching." },
+                    { titleRu: "Годовые и прогноз", titleEn: "Annualized and predicted", bodyRu: "Ставка приведена к годовым, рядом прогноз следующего расчёта.", bodyEn: "Each rate annualized, with the next settlement's prediction beside it." },
+                    { titleRu: "Алерт по порогу", titleEn: "Threshold alert", bodyRu: "Звук и окно, когда ставка уходит за ваш порог.", bodyEn: "A sound and a popup when a rate crosses your line." }
+                ],
+                shots: [
+                    { rev: "a1", art: "table" },
+                    { rev: "b2", art: "alert" },
+                    { rev: "c3", art: "window" }
+                ],
+                cover: true,
+                video: "https://www.youtube.com/watch?v=Fm7Q2xKp9Lw",
+                links: {
+                    website: "https://example.org/funding-monitor",
+                    docs: "https://example.org/funding-monitor/docs",
+                    support: "https://t.me/example_support",
+                    terms: "",
+                    telegram: "https://t.me/example_news",
+                    youtube: ""
+                },
+                languages: ["ru", "en"]
+            }
         },
         {
             id: "liquidation-radar",
@@ -446,9 +475,18 @@ window.AUTHOR_DATA = (function () {
         /* The author's feed under the bell, newest first. Only moderator decisions, replies, takedowns and
            Nest's own notices land here — never what the author did. Takedowns and revocations also go
            out by e-mail. The first `unread` rows are new. */
-        unread: 2,
+        unread: 3,
         events: [
             { kind: "review.reply", widget: "funding-monitor", v: "1.1.0", at: ago(0, 3) },
+            /* a moderator checked an edit after the fact and removed one picture, saying why */
+            {
+                kind: "listing.moderated",
+                widget: "funding-monitor",
+                parts: "скриншот 4",
+                reason: "На скриншоте виден чужой API-ключ — закройте его и загрузите снова.",
+                at: ago(0, 6),
+                ph: true
+            },
             { kind: "version.declined", widget: "3c9a6f10-8b2d-4e71-b5f4-91d0e7a2c468", v: "1.0.0", reason: "review.excess-permissions", at: ago(2, 4) },
             {
                 kind: "widget.taken-down",
