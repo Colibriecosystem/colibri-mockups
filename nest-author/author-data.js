@@ -461,6 +461,44 @@ window.AUTHOR_DATA = (function () {
     return {
         NOW: NOW,
         DAY: DAY,
+        /* The four starters of the SDK's release, as its starters.json names them: the tiles of
+           «Из шаблона». serve is the folder the terminal links; node marks a project that needs
+           Node.js to edit (its ready build is in the zip, so it runs at once without it). */
+        starters: [
+            {
+                key: "plain",
+                title: "Простой",
+                desc: "Одна HTML-страница без сборки: живая цена из стакана и сохранённая настройка.",
+                serve: "widget",
+                edit: "widget\\index.html",
+                node: false
+            },
+            {
+                key: "react",
+                title: "TypeScript + React",
+                desc: "Vite, TypeScript и React с типами API. Готовая сборка работает сразу; править — с Node.js.",
+                serve: "dist",
+                edit: "src\\App.tsx",
+                node: true
+            },
+            {
+                key: "trading",
+                title: "Торговый",
+                desc: "Счёт подключения вживую и лимитная заявка — только по подтверждённому клику.",
+                serve: "dist",
+                edit: "src\\App.tsx",
+                node: true
+            },
+            {
+                key: "chart",
+                title: "График",
+                desc: "Свечи из живых сделок на canvas, без сторонних библиотек и без сборки.",
+                serve: "widget",
+                edit: "widget\\chart.js",
+                node: false
+            }
+        ],
+        starterParent: "C:\\Users\\Anna\\ColibriWidgets",
         catalog: catalog,
         incoming: incoming,
         registry: "https://nest.colibritech.xyz",

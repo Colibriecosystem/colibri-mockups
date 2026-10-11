@@ -864,6 +864,83 @@ details.more .detail {
     transform: translateX(12px);
     background: var(--ok);
 }
+/* «Из шаблона»: four starter tiles, the steps while it is created, a Node project's next step */
+.st-tiles {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+}
+.st-tile b .chip {
+    margin-left: 4px;
+    vertical-align: 1px;
+}
+.st-steps {
+    list-style: none;
+    margin: 12px 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: var(--fs-sm);
+}
+.st-steps li {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--dim);
+}
+.st-steps li.done {
+    color: var(--text);
+}
+.st-steps li.done .icon {
+    color: var(--ok);
+}
+.st-steps li.failed,
+.st-steps li.failed .icon {
+    color: var(--danger);
+}
+.st-spin {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 2px solid var(--dim);
+    border-top-color: transparent;
+    animation: spin 0.8s linear infinite;
+    flex: none;
+}
+.st-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: flex-end;
+    margin-top: 12px;
+}
+.st-next {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.st-next h3 {
+    font-size: var(--fs-md, 14px);
+    font-weight: 600;
+}
+.st-cmd {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 6px;
+    align-items: center;
+}
+.st-cmd code {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    padding: 5px 8px;
+    border-radius: var(--r);
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+}
 .json-diff {
     font-family: var(--font-mono);
     font-size: 12px;
@@ -1344,7 +1421,8 @@ ol.stepper {
     .uv {
         grid-template-columns: minmax(0, 1fr);
     }
-    .choices {
+    .choices,
+    .st-tiles {
         grid-template-columns: minmax(0, 1fr);
     }
     .wp-head {

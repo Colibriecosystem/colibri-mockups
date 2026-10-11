@@ -9,6 +9,7 @@
      #/local/<key>           a dev folder Nest has never heard of ("code first")
      #/profile               profile, this author's keys, recovery and co-maintainers
    Mock-bar params: ?author=none|empty|yes|maintainer|unreadable|offline  ?scope=first|full  ?vw=800|1024|1280
+                    ?starters=ok|offline|none|newer|exists|taken  (the «Из шаблона» cases)
    "maintainer" is the same author seen from a co-maintainer's PC: owner-only actions are disabled. */
 (function () {
     "use strict";
@@ -43,7 +44,10 @@
         ld: null /* the Listing form's unsaved draft: one widget's at a time */,
         lpErr: null /* why the last picture was refused */,
         pg: { shot: 0, aboutOpen: false } /* the widget page: which picture is large, the long text open */,
-        pgFor: null /* the page dialog: { id, draft } */
+        pgFor: null /* the page dialog: { id, draft } */,
+        starters: ["ok", "offline", "none", "newer", "exists", "taken"].indexOf(params.get("starters")) >= 0 ? params.get("starters") : "ok",
+        st: null /* the «Из шаблона» form: { id, key, idValue, parent, steps, busy, canCancel, error } */,
+        stDone: null /* a project created a moment ago: { id, path, edit, node } */
     };
     var emptyWidgets = [];
 
@@ -1325,6 +1329,7 @@
             var legacy = legacyFields(w);
             var fields = legacy ? legacy.join(", ") : "";
             return (
+                createdBanner(w) +
                 (legacy
                     ? '<div class="banner banner-warn">' + icon("warn") + '<div class="banner-body"><b>' + esc(T("au.code.legacy.title", { fields: fields })) + "</b> " + esc(T("au.code.legacy.body")) + "</div>" + legacyRemoveBtn(w) + "</div>"
                     : "") +
@@ -1339,20 +1344,207 @@
                 '<button class="btn btn-sm" data-toast="au.toast.openedPanel">' + icon("panel") + esc(T("au.openPanel")) + "</button>" +
                 '<button class="btn btn-sm" data-toast="au.toast.openedWindow">' + icon("window") + esc(T("au.openWindow")) + "</button>" +
                 '<button class="btn btn-sm btn-link" data-act="unlink" data-id="' + esc(w.id) + '">' + esc(T("au.code.unlink")) + "</button></div>" +
-                '<p class="hint" style="margin-top:8px">' + esc(T("au.code.linkedHint")) + "</p></div>"
+                '<p class="hint" style="margin-top:8px">' + esc(T("au.code.linkedHint")) + "</p>" +
+                (c.nodeRoot ? nextStepBlock(c) : "") +
+                "</div>"
             );
         }
         var warn = mismatch(w)
             ? '<div class="banner banner-warn">' + icon("warn") + '<div class="banner-body"><b>' + esc(T("au.code.mismatch.title")) + "</b> " + esc(T("au.code.mismatch.body", { path: w.code.path, id: w.code.manifestId })) + "</div></div>"
             : "";
+        if (S.st && S.st.id === w.id) return warn + renderStarterForm(w);
         return (
             warn +
             '<p class="lede" style="margin-bottom:10px">' + esc(T("au.code.lede")) + "</p>" +
             '<div class="choices">' +
             '<div class="choice">' + icon("folder", "lg") + "<b>" + esc(T("au.code.folderChoice")) + "</b><p>" + esc(T("au.code.folderChoiceBody")) + '</p><button class="btn btn-primary" data-act="link-folder" data-id="' + esc(w.id) + '">' + esc(T("au.code.pickFolder")) + "</button></div>" +
-            '<div class="choice later">' + icon("template", "lg") + "<b>" + esc(T("au.code.template")) + later() + "</b><p>" + esc(T("au.code.templateBody")) + '</p><button class="btn" data-toast="au.toast.later">' + esc(T("au.code.pickTemplate")) + "</button></div>" +
+            '<div class="choice">' + icon("template", "lg") + "<b>" + esc(T("au.code.template")) + "</b><p>" + esc(T("au.code.templateBody")) + '</p><button class="btn" data-act="st-open" data-id="' + esc(w.id) + '">' + esc(T("au.code.pickTemplate")) + "</button></div>" +
             '<div class="choice later">' + icon("globe", "lg") + "<b>" + esc(T("au.code.hosted")) + later() + "</b><p>" + esc(T("au.code.hostedBody")) + '</p><button class="btn" data-toast="au.toast.later">' + esc(T("au.code.enterUrl")) + "</button></div>" +
             "</div>"
+        );
+    }
+
+    /* ---------- code: a project from a starter ----------
+       The terminal downloads the chosen starter from the SDK's release, checks its hash, writes this
+       widget's ID into every widget.json, creates <folder>\<ID> and links the served subfolder the way
+       «Папка с проектом» does. A draft with no versions may take another ID: the form seeds one from
+       the name, the registry renames the draft only after the download worked, so a failure before
+       that changes nothing anywhere. */
+    var ST_CASES = ["ok", "offline", "none", "newer", "exists", "taken"];
+    var LATIN = { а: "a", б: "b", в: "v", г: "g", д: "d", е: "e", ё: "e", ж: "zh", з: "z", и: "i", й: "y", к: "k", л: "l", м: "m", н: "n", о: "o", п: "p", р: "r", с: "s", т: "t", у: "u", ф: "f", х: "kh", ц: "ts", ч: "ch", ш: "sh", щ: "shch", ъ: "", ы: "y", ь: "", э: "e", ю: "yu", я: "ya" };
+    function deriveId(name) {
+        var out = "";
+        String(name || "")
+            .trim()
+            .toLowerCase()
+            .split("")
+            .forEach(function (ch) {
+                if (LATIN[ch] !== undefined) out += LATIN[ch];
+                else if (/[a-z0-9]/.test(ch)) out += ch;
+                else if (out && out[out.length - 1] !== "-") out += "-";
+            });
+        out = out.replace(/^-+|-+$/g, "").slice(0, 40).replace(/-+$/, "");
+        return out || "my-widget";
+    }
+    function isPlaceholderId(id) {
+        return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(id);
+    }
+    function stIdEditable(w) {
+        return !w.everApproved && !w.versions.length;
+    }
+    function stIdOk(id) {
+        return /^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$/.test(id);
+    }
+    function stTarget() {
+        return S.st.parent + "\\" + (S.st.idValue.trim() || "…");
+    }
+    function stStarter() {
+        return D.starters.filter(function (s) {
+            return s.key === S.st.key;
+        })[0];
+    }
+    function openStarter(w) {
+        S.st = {
+            id: w.id,
+            key: D.starters[0].key,
+            idValue: stIdEditable(w) && isPlaceholderId(w.id) ? deriveId(w.name) : w.id,
+            parent: D.starterParent,
+            steps: [],
+            busy: false,
+            canCancel: false,
+            error: null,
+            timer: null
+        };
+        render();
+    }
+    function renderStarterForm(w) {
+        var st = S.st;
+        var head = '<div class="card"><h2 class="sec">' + esc(T("au.st.title")) + '</h2><p class="hint" style="margin-bottom:10px">' + esc(T("au.st.hint")) + "</p>";
+        var load = { offline: "au.st.offline", none: "au.st.unavailable", newer: "au.st.newer" }[S.starters];
+        if (load) {
+            return (
+                head +
+                '<div class="banner ' + (S.starters === "newer" ? "banner-info" : "banner-warn") + '">' + icon(S.starters === "newer" ? "info" : "warn") + '<div class="banner-body">' + esc(T(load)) + "</div></div>" +
+                '<div class="st-actions"><button class="btn" data-act="st-sdk">' + esc(T("au.st.openSdk")) + "</button>" +
+                (S.starters === "offline" ? '<button class="btn" data-act="st-retry">' + icon("refresh") + esc(T("au.st.retry")) + "</button>" : "") +
+                '<button class="btn" data-act="st-cancel">' + esc(T("au.cancel")) + "</button></div></div>"
+            );
+        }
+        var dis = st.busy ? " disabled" : "";
+        var tiles = D.starters
+            .map(function (s) {
+                return (
+                    '<label class="radio st-tile"><input type="radio" name="st-key" data-act="st-key" value="' + esc(s.key) + '"' + (st.key === s.key ? " checked" : "") + dis + "/>" +
+                    "<div><b>" + esc(s.title) + ' <span class="chip ' + (s.node ? "chip-info" : "chip-ok") + '">' + esc(T(s.node ? "au.st.node" : "au.st.noBuild")) + "</span></b><span>" + esc(s.desc) + "</span></div></label>"
+                );
+            })
+            .join("");
+        var idCtl = stIdEditable(w)
+            ? '<input class="input mono" id="st-id" maxlength="40" value="' + esc(st.idValue) + '"' + dis + '/><span class="hint">' + esc(T("au.st.idHint")) + "</span>"
+            : '<div class="ro mono">' + esc(w.id) + '</div><span class="hint">' + esc(T("au.st.idLocked")) + "</span>";
+        var steps = st.steps.length
+            ? '<ol class="st-steps">' +
+              st.steps
+                  .map(function (s) {
+                      return '<li class="' + s.state + '">' + (s.state === "done" ? icon("check", "sm") : s.state === "now" ? '<span class="st-spin"></span>' : icon("x", "sm")) + esc(T("au.st.step." + s.key)) + "</li>";
+                  })
+                  .join("") +
+              "</ol>"
+            : "";
+        return (
+            head +
+            '<div class="st-tiles">' + tiles + "</div>" +
+            '<div class="form-grid" style="margin-top:12px">' +
+            '<label for="st-id">' + esc(T("au.st.id")) + '</label><div class="ctl">' + idCtl + "</div>" +
+            "<label>" + esc(T("au.st.folder")) + '</label><div class="ctl"><div class="row-actions"><span class="path ph">' + esc(st.parent) + '</span><button class="btn btn-sm" data-act="st-parent"' + dis + ">" + esc(T("au.st.change")) + "</button></div>" +
+            '<span class="hint" id="st-target">' + esc(T("au.st.target", { path: stTarget() })) + "</span></div></div>" +
+            steps +
+            '<p class="err" id="st-err"' + (st.error ? "" : " hidden") + ">" + esc(st.error || "") + "</p>" +
+            '<div class="st-actions"><button class="btn" data-act="st-cancel"' + (st.busy && !st.canCancel ? " disabled" : "") + ">" + esc(T("au.cancel")) + "</button>" +
+            '<button class="btn btn-primary" data-act="st-create"' + dis + ">" + esc(T("au.st.create")) + "</button></div></div>"
+        );
+    }
+    /* the steps run on timers, as the download would; Cancel works until the registry is asked */
+    function createFromStarter(w) {
+        var st = S.st;
+        var id = stIdEditable(w) ? st.idValue.trim() : w.id;
+        st.error = null;
+        st.steps = [];
+        if (!stIdOk(id)) {
+            st.error = T("au.st.idBad");
+            return render();
+        }
+        /* the folder is checked before anything is downloaded */
+        if (S.starters === "exists") {
+            st.error = T("au.st.exists", { path: stTarget() });
+            return render();
+        }
+        var renames = id !== w.id;
+        var plan = ["download", "unpack"].concat(renames ? ["rename"] : []).concat(["load"]);
+        st.busy = true;
+        function next(i) {
+            if (S.st !== st) return;
+            if (i > 0) st.steps[i - 1].state = "done";
+            if (i === plan.length) return finish();
+            var key = plan[i];
+            st.steps.push({ key: key, state: "now" });
+            st.canCancel = key === "download" || key === "unpack";
+            if (key === "rename" && S.starters === "taken") {
+                st.timer = setTimeout(function () {
+                    /* the registry said no: the unpacked copy is thrown away, nothing was created */
+                    st.steps[i].state = "failed";
+                    st.busy = false;
+                    st.error = T("au.st.idTaken", { id: id });
+                    render();
+                }, 700);
+                return render();
+            }
+            st.timer = setTimeout(function () {
+                next(i + 1);
+            }, key === "download" ? 1100 : 700);
+            render();
+        }
+        function finish() {
+            var s = stStarter();
+            var root = st.parent + "\\" + id;
+            if (renames) w.id = id;
+            w.code = {
+                path: root + "\\" + s.serve,
+                manifestId: id,
+                manifestVersion: "1.0.0",
+                changedAt: D.NOW,
+                hot: true,
+                permissions: s.key === "trading" ? ["marketData", "account:read", "trading", "storage"] : ["marketData", "storage"],
+                egress: [],
+                nodeRoot: s.node ? root : null
+            };
+            S.st = null;
+            S.stDone = { id: id, path: root, edit: s.edit, node: s.node };
+            go("#/w/" + encodeURIComponent(id) + "/code");
+            window.NEST.toast(T("au.toast.openedWindow"));
+        }
+        next(0);
+    }
+    function cancelStarter() {
+        if (S.st && S.st.timer) clearTimeout(S.st.timer);
+        S.st = null;
+        render();
+    }
+    function createdBanner(w) {
+        if (!S.stDone || S.stDone.id !== w.id) return "";
+        return '<div class="banner banner-success">' + icon("check") + '<div class="banner-body">' + esc(T(S.stDone.node ? "au.st.createdNode" : "au.st.created", { path: S.stDone.path, edit: S.stDone.edit })) + "</div></div>";
+    }
+    /* a project that needs Node.js to edit: the ready build already runs; this is how to change it */
+    function nextStepBlock(c) {
+        function cmd(text) {
+            return '<div class="st-cmd"><code>' + esc(text) + '</code><button class="btn btn-sm" data-act="copy" data-text="' + esc(text) + '">' + icon("copy") + esc(T("au.copy")) + "</button></div>";
+        }
+        return (
+            '<div class="st-next"><h3>' + esc(T("au.next.title")) + "</h3><p>" + esc(T("au.next.body")) + "</p>" +
+            cmd("npm install") +
+            cmd("npm run watch") +
+            '<p class="hint">' + esc(T("au.next.after")) + "</p>" +
+            '<div class="row-actions"><button class="btn btn-sm" data-toast="au.toast.openRoot">' + icon("folder") + esc(T("au.next.openRoot")) + '</button><span class="path ph">' + esc(c.nodeRoot) + "</span></div></div>"
         );
     }
 
@@ -2865,6 +3057,31 @@
             case "link-folder":
                 linkFolderDialog(w);
                 break;
+            case "st-open":
+                openStarter(w);
+                break;
+            case "st-create":
+                createFromStarter(find(S.st.id));
+                break;
+            case "st-cancel":
+                cancelStarter();
+                break;
+            case "st-retry":
+                S.starters = "ok";
+                syncBar();
+                render();
+                break;
+            case "st-parent":
+                window.NEST.toast(T("au.toast.pickParent"));
+                break;
+            case "st-sdk":
+                window.NEST.toast(T("au.toast.openSdk"));
+                break;
+            case "starters":
+                S.starters = el.getAttribute("data-v");
+                S.tab = "author";
+                render();
+                break;
             case "confirm-link":
                 w.code = { path: el.getAttribute("data-path"), manifestId: w.id, manifestVersion: "0.1.0", changedAt: D.NOW, hot: true, permissions: ["marketData", "storage"], egress: [] };
                 closeDialog();
@@ -3126,7 +3343,9 @@
     }
     function onChange(e) {
         var el = e.target;
-        if (el.getAttribute("data-act") === "wiz-choice") {
+        if (el.getAttribute("data-act") === "st-key" && S.st) {
+            S.st.key = el.value;
+        } else if (el.getAttribute("data-act") === "wiz-choice") {
             S.wiz.choice = el.value;
             renderWizard();
             if (el.value === "custom") focusEnd("wiz-custom");
@@ -3151,6 +3370,14 @@
     }
     function onInput(e) {
         var el = e.target;
+        if (el.id === "st-id" && S.st) {
+            S.st.idValue = el.value;
+            S.st.error = null;
+            var target = document.getElementById("st-target");
+            if (target) target.textContent = T("au.st.target", { path: stTarget() });
+            var stErr = document.getElementById("st-err");
+            if (stErr) stErr.hidden = true;
+        }
         if (el.id === "succ-q" && S.succ) {
             S.succ.q = el.value;
             var list = document.getElementById("succ-list");
@@ -3358,7 +3585,7 @@
         document.querySelectorAll(".mock-bar [data-act]").forEach(function (b) {
             var act = b.getAttribute("data-act");
             var v = b.getAttribute("data-v");
-            var on = (act === "vw" && v === S.vw) || (act === "author-state" && v === S.author && S.tab === "author") || (act === "scope" && v === S.scope) || (act === "user-view" && S.tab === "catalog");
+            var on = (act === "vw" && v === S.vw) || (act === "author-state" && v === S.author && S.tab === "author") || (act === "scope" && v === S.scope) || (act === "user-view" && S.tab === "catalog") || (act === "starters" && v === S.starters);
             if (act !== "tour") b.setAttribute("aria-pressed", String(!!on));
         });
     }
