@@ -80,7 +80,7 @@ window.AUTHOR_DATA = (function () {
                     thread: []
                 }
             ],
-            stats: { installs: 412, active7: 268, adoption: [{ v: "1.0.0", share: 100 }], errors: 3 },
+            stats: { installs: 412, activeInstalls: 377, active7: 268, versions: [{ v: "1.0.0", n: 361 }, { v: null, n: 16 }] },
             /* The listing page beyond the card — all invented: the long text, the features, the pictures,
                the video and the links. Pictures are drawn by the page, not files: `art` names the drawing. */
             page: {
@@ -359,7 +359,7 @@ window.AUTHOR_DATA = (function () {
                     thread: []
                 }
             ],
-            stats: { installs: 37, active7: 21, adoption: [{ v: "0.9.2", share: 100 }], errors: 0 }
+            stats: { installs: 37, activeInstalls: 33, active7: 21, versions: [{ v: "0.9.2", n: 33 }] }
         },
         {
             id: "b09e4a72-5d31-4c8f-a6e0-3f7b28d1c954",
@@ -384,7 +384,7 @@ window.AUTHOR_DATA = (function () {
                 { v: "2.1.0", state: "approved", current: true, ph: true, submitted: ago(140), decided: ago(138), notesRu: "Тёмная тема.", notesEn: "Dark theme.", thread: [] },
                 { v: "2.0.0", state: "approved", ph: true, submitted: ago(200), decided: ago(197), notesRu: "", notesEn: "", thread: [] }
             ],
-            stats: { installs: 1290, active7: 64, adoption: [{ v: "2.1.0", share: 81 }, { v: "2.0.0", share: 19 }], errors: 0 }
+            stats: { installs: 1290, activeInstalls: 1027, active7: 64, versions: [{ v: "2.1.0", n: 822 }, { v: "2.0.0", n: 193 }, { v: null, n: 12 }] }
         },
         {
             id: "0d6c2f85-9a14-4e7b-b3c0-8e51f9a27d46",
@@ -406,7 +406,7 @@ window.AUTHOR_DATA = (function () {
             share: "Vc2Ny7Lm4Qb9Kx1Ts6Hw3Jp8Fd0Gz5Ra2Ue7Oi4WkLn",
             takedown: { at: ago(6), reason: "В описании обещана доходность, а виджет ведёт в платный канал. Это против правил содержания Nest." },
             versions: [{ v: "1.2.0", state: "approved", current: true, ph: true, submitted: ago(60), decided: ago(58), notesRu: "", notesEn: "", thread: [] }],
-            stats: { installs: 88, active7: 5, adoption: [{ v: "1.2.0", share: 100 }], errors: 0 }
+            stats: { installs: 88, activeInstalls: 71, active7: 5, versions: [{ v: "1.2.0", n: 71 }] }
         }
     ];
 

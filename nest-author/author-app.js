@@ -669,7 +669,7 @@
         ["listing", "au.sec.listing", false],
         ["code", "au.sec.code", false],
         ["access", "au.sec.access", false],
-        ["stats", "au.sec.stats", true]
+        ["stats", "au.sec.stats", false]
     ];
     function renderWidget(w, sec) {
         var id = encodeURIComponent(w.id);
@@ -761,7 +761,7 @@
         var statsCard = "";
         if (w.stats) {
             statsCard =
-                '<div class="card later"><h2 class="sec">' + esc(T("au.sec.stats")) + later() + '</h2><div class="nums">' +
+                '<div class="card"><h2 class="sec">' + esc(T("au.sec.stats")) + '</h2><div class="nums">' +
                 '<div class="stat"><b class="ph">' + fmtNum(w.stats.installs) + "</b><span>" + esc(T("au.stats.installs")) + "</span></div>" +
                 '<div class="stat"><b class="ph">' + fmtNum(w.stats.active7) + "</b><span>" + esc(T("au.stats.active7")) + "</span></div></div></div>";
         }
@@ -1379,34 +1379,104 @@
         );
     }
 
-    /* ---------- stats (later) ---------- */
+    /* ---------- stats ---------- */
+    /* Thirty closed days, invented but steady: a widget's installs and users follow its size, with
+       one uninstall spike (an update people did not like) so the chart shows what it is for. */
+    function statsDays(s) {
+        var days = [];
+        var scale = Math.max(1, s.installs / 120);
+        for (var i = 0; i < 30; i++) {
+            var installs = Math.max(0, Math.round(scale * (2.2 + 1.4 * Math.sin(i * 0.9) + i / 14)));
+            var uninstalls = Math.max(0, Math.round(scale * (0.5 + 0.5 * Math.cos(i * 1.3)) + (i === 21 ? scale * 4 : 0)));
+            var users = Math.max(0, Math.round(s.active7 * (0.32 + 0.06 * Math.sin(i * 0.6)) * (i % 7 === 5 || i % 7 === 6 ? 0.7 : 1)));
+            days.push({ i: installs, x: uninstalls, u: i === 29 ? null : users });
+        }
+        return days;
+    }
+    /* One SVG, one or two lines over the same box; a null point (a day not counted yet) breaks the line. */
+    function sparkSvg(series, label) {
+        var max = 1;
+        series.forEach(function (s) {
+            s.v.forEach(function (p) {
+                if (p != null && p > max) max = p;
+            });
+        });
+        var paths = series
+            .map(function (s) {
+                var d = "";
+                var pen = "M";
+                s.v.forEach(function (p, i) {
+                    if (p == null) {
+                        pen = "M";
+                        return;
+                    }
+                    d += pen + (i * (300 / (s.v.length - 1))).toFixed(1) + " " + (56 - (p / max) * 50).toFixed(1) + " ";
+                    pen = "L";
+                });
+                return '<path d="' + d + '" fill="none" stroke="' + s.color + '" stroke-width="1.6" vector-effect="non-scaling-stroke"/>';
+            })
+            .join("");
+        return '<svg viewBox="0 0 300 60" width="100%" height="80" preserveAspectRatio="none" role="img" aria-label="' + esc(label) + '">' + paths + "</svg>";
+    }
+    function legend(items) {
+        return (
+            '<div class="small dim" style="display:flex;gap:14px;flex-wrap:wrap;margin-top:4px">' +
+            items
+                .map(function (x) {
+                    return '<span><i style="display:inline-block;width:10px;height:2px;vertical-align:middle;margin-right:5px;background:' + x[1] + '"></i>' + esc(x[0]) + "</span>";
+                })
+                .join("") +
+            "</div>"
+        );
+    }
     function renderStats(w) {
         if (!w.stats) return '<div class="empty-state">' + icon("chart") + "<h1>" + esc(T("au.stats.none.title")) + '</h1><p class="lede" style="margin:0 auto">' + esc(T("au.stats.none.body")) + "</p></div>";
         var s = w.stats;
-        var spark = "";
-        var pts = [];
-        for (var i = 0; i < 30; i++) pts.push(Math.round(s.installs * (0.55 + 0.45 * (i / 29)) + 6 * Math.sin(i * 1.7)));
-        var max = Math.max.apply(null, pts);
-        var min = Math.min.apply(null, pts);
-        spark = pts
-            .map(function (p, i) {
-                return (i ? "L" : "M") + (i * (300 / 29)).toFixed(1) + " " + (56 - ((p - min) / (max - min || 1)) * 50).toFixed(1);
+        var days = statsDays(s);
+        var sum = function (k) {
+            return days.reduce(function (a, d) {
+                return a + (d[k] || 0);
+            }, 0);
+        };
+        var total = s.versions.reduce(function (a, v) {
+            return a + v.n;
+        }, 0);
+        var versionRows = s.versions
+            .map(function (v) {
+                var share = Math.round((v.n / (total || 1)) * 100);
+                var name = v.v ? '<span class="mono">' + esc(v.v) + "</span>" : '<span class="dim" style="white-space:nowrap">' + esc(T("au.stats.unknownVersion")) + "</span>";
+                return (
+                    '<div style="display:grid;grid-template-columns:130px 1fr 44px 52px;gap:8px;align-items:center;margin:4px 0">' + name +
+                    '<div class="progress" style="margin:0"><i style="width:' + share + "%;background:var(--info)" + (v.v ? "" : ";opacity:.45") + '"></i></div>' +
+                    '<span class="dim small ph" style="text-align:right">' + share + '%</span><span class="dim small ph" style="text-align:right">' + fmtNum(v.n) + "</span></div>"
+                );
             })
-            .join(" ");
+            .join("");
         return (
             '<p class="lede" style="margin-bottom:10px">' + esc(T("au.stats.lede")) + "</p>" +
             '<div class="nums" style="margin-bottom:10px">' +
             '<div class="stat"><b class="ph">' + fmtNum(s.installs) + "</b><span>" + esc(T("au.stats.installs")) + "</span></div>" +
-            '<div class="stat"><b class="ph">' + fmtNum(s.active7) + "</b><span>" + esc(T("au.stats.active7")) + "</span></div>" +
-            '<div class="stat"><b class="ph">' + fmtNum(s.errors) + "</b><span>" + esc(T("au.stats.errors")) + "</span></div></div>" +
-            '<div class="grid-2"><div class="card"><h2 class="sec">' + esc(T("au.stats.over30")) + '</h2><svg viewBox="0 0 300 60" width="100%" height="80" preserveAspectRatio="none" role="img" aria-label="' + esc(T("au.stats.over30")) + '"><path d="' + spark + '" fill="none" stroke="var(--accent)" stroke-width="1.6" vector-effect="non-scaling-stroke"/></svg><p class="hint">' + esc(T("au.stats.delayed")) + "</p></div>" +
-            '<div class="card"><h2 class="sec">' + esc(T("au.stats.adoption")) + "</h2>" +
-            s.adoption
-                .map(function (a) {
-                    return '<div style="display:grid;grid-template-columns:60px 1fr 44px;gap:8px;align-items:center;margin:4px 0"><span class="mono">' + esc(a.v) + '</span><div class="progress" style="margin:0"><i style="width:' + a.share + '%;background:var(--info)"></i></div><span class="dim small ph">' + a.share + "%</span></div>";
-                })
-                .join("") +
-            '<p class="hint">' + esc(T("au.stats.errorsHint")) + "</p></div></div>"
+            '<div class="stat"><b class="ph">' + fmtNum(s.activeInstalls) + "</b><span>" + esc(T("au.stats.activeInstalls")) + "</span></div>" +
+            '<div class="stat"><b class="ph">' + fmtNum(s.active7) + "</b><span>" + esc(T("au.stats.active7")) + "</span></div></div>" +
+            '<div class="grid-2">' +
+            '<div class="card"><h2 class="sec">' + esc(T("au.stats.over30")) + "</h2>" +
+            sparkSvg(
+                [
+                    { v: days.map(function (d) { return d.i; }), color: "var(--accent)" },
+                    { v: days.map(function (d) { return d.x; }), color: "var(--danger)" }
+                ],
+                T("au.stats.over30")
+            ) +
+            legend([[T("au.stats.legend.installs"), "var(--accent)"], [T("au.stats.legend.uninstalls"), "var(--danger)"]]) +
+            '<p class="small" style="margin-top:6px"><span class="ph">' + esc(T("au.stats.over30Sum", { i: fmtNum(sum("i")), x: fmtNum(sum("x")) })) + "</span></p>" +
+            '<p class="hint">' + esc(T("au.stats.delayed")) + "</p></div>" +
+            '<div class="card"><h2 class="sec">' + esc(T("au.stats.users30")) + "</h2>" +
+            sparkSvg([{ v: days.map(function (d) { return d.u; }), color: "var(--info)" }], T("au.stats.users30")) +
+            legend([[T("au.stats.legend.users"), "var(--info)"]]) +
+            '<p class="hint">' + esc(T("au.stats.usersHint")) + "</p></div>" +
+            '<div class="card"><h2 class="sec">' + esc(T("au.stats.adoption")) + "</h2>" + versionRows +
+            '<p class="hint">' + esc(T("au.stats.adoptionHint")) + "</p></div>" +
+            "</div>"
         );
     }
 
