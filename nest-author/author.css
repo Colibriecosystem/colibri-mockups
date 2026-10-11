@@ -2004,3 +2004,22 @@ dialog.page {
         grid-template-columns: minmax(0, 1fr);
     }
 }
+
+/* lifecycle: the successor picker and the user's end-of-life lines */
+.succ-list {
+    display: grid;
+    gap: 4px;
+    max-height: 300px;
+    overflow-y: auto;
+    margin: 8px 0;
+}
+.radio.succ-row {
+    grid-template-columns: 18px 28px minmax(0, 1fr);
+    align-items: center;
+}
+.radio.succ-row input {
+    margin: 0;
+}
+.cat-row .life-line {
+    color: var(--warn);
+}

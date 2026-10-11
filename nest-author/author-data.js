@@ -380,6 +380,10 @@ window.AUTHOR_DATA = (function () {
             code: null,
             share: "Tr5Wm1Qx8Lc3Nb6Vz0Kp9Jd2Hs7Fy4Ga1Ue8Oi5RkMw",
             withdrawnAt: ago(12),
+            /* retired the gentle way: marked out of date with a replacement, then taken out of the
+               catalog. Users who have it see both (invented) */
+            deprecated: true,
+            successor: "crypto-market-map",
             versions: [
                 { v: "2.1.0", state: "approved", current: true, ph: true, submitted: ago(140), decided: ago(138), notesRu: "Тёмная тема.", notesEn: "Dark theme.", thread: [] },
                 { v: "2.0.0", state: "approved", ph: true, submitted: ago(200), decided: ago(197), notesRu: "", notesEn: "", thread: [] }
@@ -410,9 +414,55 @@ window.AUTHOR_DATA = (function () {
         }
     ];
 
+    /* The public catalog the successor picker searches: the real listings of the catalog mock, id,
+       name and author only. */
+    var catalog = [
+        { id: "algoradar", name: "AlgoRadar", author: "Vazgen", color: "#4a5a8c" },
+        { id: "colibri-screener", name: "Colibri Screener", author: "Stepan", color: "#2f6d7d" },
+        { id: "crypto-market-map", name: "Карта рынка", author: "Aleksandr", color: "#3d7a4a" },
+        { id: "funding-monitor", name: "Фандинг-монитор", author: "Colibri", color: "#2f7d6d" },
+        { id: "large-tick-timer", name: "Таймер Крупных Тиков", author: "Exchange Speculator", color: "#7d5a2f" },
+        { id: "liquidation-radar", name: "Радар ликвидаций", author: "Colibri", color: "#8a3b2a" },
+        { id: "oi-monitor", name: "OI Monitor", author: "Michael Khodos", color: "#5a3d7a" },
+        { id: "scalp-lenta", name: "Pump & Dump / Impulse", author: "Exchange Speculator", color: "#7a3d5a" },
+        { id: "scalpy-net", name: "SCALPY.NET", author: "Armen Lalayan", color: "#3d5f7a" },
+        { id: "twap-radar", name: "TWAP-радар", author: "Hayk Kupalyan", color: "#6d6d2f" }
+    ];
+
+    /* A widget another author is handing to this one: what the code on the mock's example button
+       opens. All invented. */
+    var incoming = {
+        code: "T7R4X-K2M9Q-8HVNC-3WDPB",
+        from: "Тигран М.",
+        expires: NOW + 5 * DAY,
+        widget: {
+            id: "c4e81a0f-3b6d-4f29-9a57-d10e6b8c2f93",
+            name: "Объёмы по часам",
+            letter: "О",
+            color: "#3a6e8c",
+            ph: true,
+            state: "live",
+            everApproved: true,
+            visibility: "catalog",
+            category: "analytics",
+            tags: ["объём", "сессии"],
+            descRu: "Объём торгов по часам суток за последние 30 дней — видно, когда рынок живой.",
+            descEn: "Trading volume by hour of day over the last 30 days — shows when the market is alive.",
+            iconSet: true,
+            surfaces: ["slot", "window"],
+            live: { permissions: ["marketData", "storage"], egress: [] },
+            code: null,
+            share: "Ux4Mb8Lq1Nd6Kw3Rz9Ts2Hc7Fp0Gj5Va2Ye8Oi4XkWn",
+            versions: [{ v: "1.3.0", state: "approved", current: true, ph: true, submitted: ago(33), decided: ago(31), notesRu: "Выбор биржи.", notesEn: "Venue picker.", thread: [] }],
+            stats: { installs: 214, activeInstalls: 188, active7: 97, versions: [{ v: "1.3.0", n: 188 }] }
+        }
+    };
+
     return {
         NOW: NOW,
         DAY: DAY,
+        catalog: catalog,
+        incoming: incoming,
         registry: "https://nest.colibritech.xyz",
         author: {
             name: "Colibri",
@@ -444,7 +494,8 @@ window.AUTHOR_DATA = (function () {
                 pairing: "7KQ2M-H9XRT-4VN8C-WD3PJ",
                 invitation: "M4T9X-2RKQH-8CVNW-J6PD3",
                 recovery: "K7M2Q-9XRT4-HV8NC-3WDPJ-6FB1G-ZE5YA",
-                email: "B3N7R-5TQ2X-K8WMH-9CVDJ"
+                email: "B3N7R-5TQ2X-K8WMH-9CVDJ",
+                transfer: "R2W8K-M5QTX-9HCVN-4JDPF"
             }
         },
         widgets: widgets,
@@ -488,13 +539,25 @@ window.AUTHOR_DATA = (function () {
                 ph: true
             },
             { kind: "version.declined", widget: "3c9a6f10-8b2d-4e71-b5f4-91d0e7a2c468", v: "1.0.0", reason: "review.excess-permissions", at: ago(2, 4) },
+            /* a request for the catalog, answered on its own — no version came with it */
+            {
+                kind: "catalog.declined",
+                widget: "71f0c3d8-2e9a-4b6c-8f17-5a4d0e9b3c21",
+                reason: "Добавьте описание на английском — без него в каталог не берём. Ссылка работает как прежде.",
+                at: ago(4, 2),
+                ph: true
+            },
             {
                 kind: "widget.taken-down",
                 widget: "0d6c2f85-9a14-4e7b-b3c0-8e51f9a27d46",
                 reason: "В описании обещана доходность, а виджет ведёт в платный канал. Это против правил содержания Nest.",
                 at: ago(6)
             },
+            /* the Nest team voided a transfer code the author had made; the widget stayed theirs */
+            { kind: "transfer.voided", widget: "b09e4a72-5d31-4c8f-a6e0-3f7b28d1c954", at: ago(9), ph: true },
             { kind: "notice", title: "Панели виджетов: что изменится в следующей версии Colibri", url: "https://example.org/nest/notices", at: ago(12), ph: true },
+            /* a widget handed to another author: it is no longer in the list, so the row names it itself */
+            { kind: "widget.transferred", name: "Сигнальная линия", to: "Тигран М.", at: ago(20), ph: true },
             { kind: "version.approved", widget: "liquidation-radar", v: "1.0.0", at: ago(31) }
         ]
     };

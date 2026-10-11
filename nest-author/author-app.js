@@ -34,6 +34,9 @@
         uvCase: "one", /* the user's side: one version after theirs, or the three-version example */
         uvUpdated: false,
         uvHistory: false,
+        uvLife: "deprecated", /* the user's side of a widget's end of life: which case is drawn */
+        succ: null, /* the successor picker: { id, pick, q } */
+        trPreview: false /* the receiving author has typed a valid code and sees what they would get */,
         code: null, /* the code dialog on screen: { kind, code, until } */
         redeem: { value: "", error: null, emailSent: false }, /* the «ключ или код» box */
         recoveryUsed: false /* the author just came back with the recovery code */,
@@ -255,6 +258,13 @@
         var c = CHIP[phaseOf(w)];
         return '<span class="chip ' + c[1] + '">' + esc(T(c[0])) + "</span>";
     }
+    /* beside the state, never instead of it: out of date, and a transfer waiting for its code */
+    function lifeChips(w) {
+        var out = "";
+        if (w.deprecated) out += ' <span class="chip chip-warn" title="' + esc(w.successor ? T("au.dep.withSuccessor", { name: successorName(w.successor) }) : T("au.dep.noSuccessor")) + '">' + esc(T("au.dep.chip")) + "</span>";
+        if (w.transfer) out += ' <span class="chip chip-info">' + icon("transfer", "sm") + esc(T("au.tr.chip")) + "</span>";
+        return out;
+    }
     function attention(w) {
         var p = phaseOf(w);
         if (p === "declined" || p === "refused" || p === "takendown") return "danger";
@@ -405,8 +415,9 @@
        the badge here and on the «Автор» tab both clear. The rows that were new keep their dot until the
        list closes, so the author still sees which ones they were. */
     function bellEvents() {
+        /* a widget handed to someone else is no longer the author's, so its row carries its own name */
         return D.events.filter(function (n) {
-            return n.kind === "notice" || find(n.widget);
+            return n.kind === "notice" || n.kind === "widget.transferred" || find(n.widget);
         });
     }
     function bellUnread() {
@@ -441,13 +452,23 @@
                 return n.title;
             case "listing.moderated":
                 return T("au.ev.listingModerated", { w: name, parts: n.parts, reason: n.reason });
+            case "catalog.approved":
+                return T("au.ev.catalogApproved", { w: name });
+            case "catalog.declined":
+                return reason ? T("au.ev.catalogDeclined", { w: name, reason: reason }) : T("au.ev.catalogDeclinedBare", { w: name });
+            case "successor.cleared":
+                return reason ? T("au.ev.successorCleared", { w: name, reason: reason }) : T("au.ev.successorClearedBare", { w: name });
+            case "widget.transferred":
+                return T("au.ev.transferred", { w: n.name, to: n.to });
+            case "transfer.voided":
+                return T("au.ev.transferVoided", { w: name });
             default:
                 return T("au.ev.unknown", { w: name });
         }
     }
     function eventColor(kind) {
-        if (kind === "version.approved" || kind === "version.reinstated" || kind === "widget.reinstated") return "var(--ok)";
-        if (kind === "review.reply" || kind === "notice") return "var(--info)";
+        if (kind === "version.approved" || kind === "version.reinstated" || kind === "widget.reinstated" || kind === "catalog.approved") return "var(--ok)";
+        if (kind === "review.reply" || kind === "notice" || kind === "widget.transferred") return "var(--info)";
         return "var(--danger)";
     }
     function renderBellPop() {
@@ -458,9 +479,11 @@
                 var dot = '<span class="status-dot" style="color:' + eventColor(n.kind) + '"></span>';
                 var text = '<span><span class="' + (n.ph ? "ph" : "") + '">' + esc(eventText(n)) + "</span><small>" + fmtDT(n.at) + (isNew ? ' · <b class="note-new">' + esc(T("au.bell.new")) + "</b>" : "") + "</small></span>";
                 if (n.kind === "notice") return '<a class="note-row' + (isNew ? " is-new" : "") + '" href="' + esc(n.url) + '" target="_blank" rel="noopener" data-act="bell-close">' + dot + text + "</a>";
+                if (n.kind === "widget.transferred") return '<a class="note-row' + (isNew ? " is-new" : "") + '" href="#/" data-act="bell-close">' + dot + text + "</a>";
                 var id = encodeURIComponent(n.widget);
                 var versionKind = n.kind.indexOf("version.") === 0 || n.kind === "review.reply";
-                var href = "#/w/" + id + (versionKind ? "/versions" : n.kind === "listing.moderated" ? "/listing" : "/overview");
+                var accessKind = n.kind.indexOf("catalog.") === 0 || n.kind === "successor.cleared" || n.kind === "transfer.voided";
+                var href = "#/w/" + id + (versionKind ? "/versions" : n.kind === "listing.moderated" ? "/listing" : accessKind ? "/access" : "/overview");
                 /* a version's row opens expanded; its conversation is open there whenever it has messages */
                 var open = versionKind ? ' data-open-row="' + esc(n.widget + "@" + n.v) + '"' : "";
                 return '<a class="note-row' + (isNew ? " is-new" : "") + '" href="' + href + '"' + open + ' data-act="bell-close">' + dot + text + "</a>";
@@ -543,7 +566,7 @@
                 return (
                     "<tr>" +
                     '<td><div class="w">' + wicon(w) + '<a href="#/w/' + encodeURIComponent(w.id) + '/overview">' + wname(w) + "</a></div></td>" +
-                    "<td>" + stateChip(w) + "</td>" +
+                    "<td>" + stateChip(w) + lifeChips(w) + "</td>" +
                     "<td>" + ver + "</td>" +
                     '<td class="dim small">' + esc(nx.short) + "</td>" +
                     '<td class="num col-wide later">' + installs + "</td>" +
@@ -679,6 +702,7 @@
         if (pend && w.everApproved && pend.state === "pending") meta += ' <span class="chip chip-warn">' + esc(T("au.pendingVersion", { v: pend.v })) + "</span>";
         if (pend && w.everApproved && pend.state === "checking") meta += ' <span class="chip chip-info"><span class="status-dot pulse"></span>' + esc(T("au.feedback.checking", { v: pend.v })) + "</span>";
         if (w.catalogRequested && w.visibility !== "catalog") meta += ' <span class="chip chip-info">' + esc(T("au.chip.catalogRequested")) + "</span>";
+        meta += lifeChips(w);
         if (w.pendingName) meta += ' <span class="chip chip-warn">' + esc(T("au.pendingName", { name: w.pendingName })) + "</span>";
         meta += ' <span class="idline">ID ' + esc(w.id) + ' <button data-act="copy" data-text="' + esc(w.id) + '" title="' + esc(T("au.copyId")) + '">' + icon("copy", "sm") + "</button></span>";
         var canRelease = w.state !== "takendown" && w.state !== "withdrawn" && !(pend && pend.state === "checking");
@@ -1344,25 +1368,58 @@
         } else link = '<p class="dim">' + esc(T("au.access.linkAfterFirst")) + "</p>";
         out += '<div class="card"><h2 class="sec">' + esc(T("au.access.link")) + "</h2>" + link + "</div>";
 
+        /* The switch works at any time, by the release's rules: out of the catalog at once, into it by
+           a moderator's yes. A co-maintainer may use it, as they may choose it at release. */
         var vis;
         if (!w.everApproved) vis = '<p class="dim">' + esc(T("au.access.visDraft")) + "</p>";
         else {
             var inCat = w.visibility === "catalog";
+            var off = w.state === "takendown" ? " disabled" : "";
             vis =
                 '<p><span class="chip ' + (inCat ? "chip-ok" : "chip-info") + '">' + esc(inCat ? T("au.state.live") : T("au.state.link")) + "</span></p>" +
-                '<div class="vis later" style="margin-top:8px">' +
-                '<label class="radio"><input type="radio" name="vis"' + (inCat ? " checked" : "") + ' data-act="vis" data-id="' + esc(w.id) + '" value="catalog"/><div><b>' + esc(T("au.vis.catalog")) + later() + "</b><span>" + esc(inCat ? T("au.vis.catalogNow") : T("au.vis.toCatalog")) + "</span></div></label>" +
-                '<label class="radio"><input type="radio" name="vis"' + (!inCat ? " checked" : "") + ' data-act="vis" data-id="' + esc(w.id) + '" value="link"/><div><b>' + esc(T("au.vis.link")) + later() + "</b><span>" + esc(T("au.vis.toLink")) + "</span></div></label></div>";
+                '<div class="vis" style="margin-top:8px">' +
+                '<label class="radio"><input type="radio" name="vis"' + (inCat || w.catalogRequested ? " checked" : "") + off + ' data-act="vis" data-id="' + esc(w.id) + '" value="catalog"/><div><b>' + esc(T("au.vis.catalog")) + "</b><span>" + esc(inCat ? T("au.vis.catalogNow") : T("au.vis.toCatalog")) + "</span></div></label>" +
+                '<label class="radio"><input type="radio" name="vis"' + (!inCat && !w.catalogRequested ? " checked" : "") + off + ' data-act="vis" data-id="' + esc(w.id) + '" value="link"/><div><b>' + esc(T("au.vis.link")) + "</b><span>" + esc(inCat ? T("au.vis.toLink") : T("au.vis.linkNow")) + "</span></div></label></div>";
         }
-        if (w.catalogRequested && w.visibility !== "catalog") vis += '<p class="dim" style="margin-top:6px">' + esc(T("au.access.catalogRequested")) + "</p>";
+        if (w.catalogRequested && w.visibility !== "catalog") {
+            var waitPend = pendingOf(w);
+            vis += '<p class="dim" style="margin-top:6px">' + esc(waitPend && waitPend.state === "pending" ? T("au.access.catalogRequestedWithVersion", { v: waitPend.v }) : T("au.access.catalogRequested")) + "</p>";
+        }
         out += '<div class="card"><h2 class="sec">' + esc(T("au.access.visibility")) + "</h2>" + vis + "</div>";
 
+        var lock = isMaint() ? ownerOnlyAttrs() : "";
         var life = "";
-        if (w.state === "withdrawn") life += row(T("au.restore"), T("au.access.restoreBody"), '<button class="btn" data-act="restore" data-id="' + esc(w.id) + '"' + (isMaint() ? ownerOnlyAttrs() : "") + ">" + icon("undo") + esc(T("au.restore")) + "</button>");
-        else if (w.state !== "takendown" && w.everApproved) life += row(T("au.withdraw"), T("au.withdraw.tip"), '<button class="btn" data-act="withdraw" data-id="' + esc(w.id) + '"' + (isMaint() ? ownerOnlyAttrs() : "") + ">" + icon("archive") + esc(T("au.withdraw")) + "</button>");
+        if (w.ownerSince) life += '<p class="dim small" style="margin-bottom:6px">' + icon("transfer", "sm") + " " + esc(T("au.tr.receivedLine", { date: fmtDate(w.ownerSince), from: w.ownerFrom })) + "</p>";
+        if (w.state === "withdrawn") life += row(T("au.restore"), T("au.access.restoreBody"), '<button class="btn" data-act="restore" data-id="' + esc(w.id) + '"' + lock + ">" + icon("undo") + esc(T("au.restore")) + "</button>");
+        else if (w.state !== "takendown" && w.everApproved) life += row(T("au.withdraw"), T("au.withdraw.tip"), '<button class="btn" data-act="withdraw" data-id="' + esc(w.id) + '"' + lock + ">" + icon("archive") + esc(T("au.withdraw")) + "</button>");
         if (w.everApproved) {
-            life += '<div class="later">' + row(T("au.access.deprecate") + " ", T("au.access.deprecateBody"), '<button class="btn" data-toast="au.toast.later">' + esc(T("au.access.deprecateAction")) + "</button>", true) + "</div>";
-            life += '<div class="later">' + row(T("au.access.transfer") + " ", T("au.access.transferBody"), '<button class="btn" data-toast="au.toast.later">' + icon("transfer") + esc(T("au.access.transferAction")) + "</button>", true) + "</div>";
+            /* out of date: a mark and, if the author names one, a replacement from the catalog */
+            if (w.deprecated) {
+                var sname = successorName(w.successor);
+                var dBody = esc(w.successor ? T("au.dep.withSuccessor", { name: sname }) : T("au.dep.noSuccessor"));
+                if (w.successor && !isPublicNow(w.successor)) dBody += '<br/><span style="color:var(--warn)">' + icon("warn", "sm") + " " + esc(T("au.dep.hidden", { name: sname })) + "</span>";
+                life += rowRaw(
+                    T("au.dep.title"),
+                    dBody,
+                    '<div class="row-actions"><button class="btn" data-act="deprecate" data-id="' + esc(w.id) + '"' + lock + ">" + esc(T("au.dep.change")) + '</button><button class="btn" data-act="undeprecate" data-id="' + esc(w.id) + '"' + lock + ">" + icon("undo") + esc(T("au.dep.undo")) + "</button></div>"
+                );
+            } else life += row(T("au.access.deprecate"), T("au.access.deprecateBody"), '<button class="btn" data-act="deprecate" data-id="' + esc(w.id) + '"' + lock + ">" + esc(T("au.access.deprecateAction")) + "</button>");
+            /* transfer: a one-time code the other author types in; nothing moves until they accept */
+            if (w.transfer) {
+                life += rowRaw(
+                    T("au.tr.pendingTitle"),
+                    esc(T("au.tr.pendingBody", { date: fmtDate(w.transfer.until) })),
+                    '<div class="row-actions"><button class="btn" data-act="transfer" data-id="' + esc(w.id) + '"' + lock + ">" + esc(T("au.tr.newCode")) + '</button><button class="btn" data-act="cancel-transfer" data-id="' + esc(w.id) + '"' + lock + ">" + esc(T("au.tr.cancel")) + "</button></div>"
+                );
+            } else {
+                var fp = pendingOf(w);
+                var why = w.state === "takendown" ? T("au.tr.blockedTakedown") : fp && (fp.state === "pending" || fp.state === "checking") ? T("au.tr.blockedVersion", { v: fp.v }) : null;
+                life += rowRaw(
+                    T("au.access.transfer"),
+                    esc(T("au.access.transferBody")) + (why ? '<br/><span class="faint">' + esc(why) + "</span>" : ""),
+                    '<button class="btn" data-act="transfer" data-id="' + esc(w.id) + '"' + (why ? ' disabled title="' + esc(why) + '"' : lock) + ">" + icon("transfer") + esc(T("au.access.transferAction")) + "</button>"
+                );
+            }
         }
         if (life) out += '<div class="card"><h2 class="sec">' + esc(T("au.access.lifecycle")) + "</h2>" + life + "</div>";
         out +=
@@ -1374,9 +1431,49 @@
         return out;
     }
     function row(title, body, action, isLater) {
+        return rowRaw(title, esc(body), action, isLater);
+    }
+    function rowRaw(title, bodyHtml, action, isLater) {
         return (
-            '<div class="row-actions" style="justify-content:space-between;padding:6px 0;border-top:1px solid var(--border)"><div style="flex:1;min-width:240px"><b>' + esc(title) + "</b>" + (isLater ? later() : "") + '<p class="dim small">' + esc(body) + "</p></div>" + action + "</div>"
+            '<div class="row-actions" style="justify-content:space-between;padding:6px 0;border-top:1px solid var(--border)"><div style="flex:1;min-width:240px"><b>' + esc(title) + "</b>" + (isLater ? later() : "") + '<p class="dim small">' + bodyHtml + "</p></div>" + action + "</div>"
         );
+    }
+
+    /* ---------- lifecycle: the catalog the successor comes from ---------- */
+    /* A widget is a fair successor while it is in the public catalog: the author's own when its
+       standing says so, anyone else's from the catalog list. */
+    function catalogEntry(id) {
+        var own = find(id);
+        if (own) return { id: own.id, name: own.name, author: D.author.name, color: own.color, letter: own.letter, own: own };
+        for (var i = 0; i < D.catalog.length; i++) if (D.catalog[i].id === id) return D.catalog[i];
+        return null;
+    }
+    function isPublicNow(id) {
+        var e = catalogEntry(id);
+        if (!e) return false;
+        return e.own ? phaseOf(e.own) === "live" : true;
+    }
+    function successorName(id) {
+        var e = id ? catalogEntry(id) : null;
+        return e ? e.name : id || "";
+    }
+    function successorCandidates(w, q) {
+        var seen = {};
+        var list = [];
+        D.catalog.concat(widgets().map(function (x) {
+            return { id: x.id };
+        })).forEach(function (x) {
+            if (seen[x.id] || x.id === w.id || !isPublicNow(x.id)) return;
+            seen[x.id] = true;
+            var e = catalogEntry(x.id);
+            if (!q || (e.name + " " + e.author).toLowerCase().indexOf(q.toLowerCase()) >= 0) list.push(e);
+        });
+        return list.sort(function (a, b) {
+            return a.name.localeCompare(b.name, "ru");
+        });
+    }
+    function catIcon(e) {
+        return '<span class="wicon" style="background:' + e.color + '" aria-hidden="true">' + esc(e.letter || e.name.charAt(0)) + "</span>";
     }
 
     /* ---------- stats ---------- */
@@ -1840,6 +1937,7 @@
             '</div><div class="row-actions">' + (waiting ? updateBtn("btn-sm", T("au.uv.updateTo", { v: served.v })) : "") +
             '<button class="btn btn-sm btn-icon" data-toast="au.toast.later" aria-label="⋯">⋯</button><span class="uv-switch" aria-hidden="true"></span></div></div>' +
             '<p class="hint" style="margin-top:8px">' + esc(T("au.uv.noNotesRule")) + " " + esc(T("au.uv.sinceRule")) + "</p>" +
+            uvLifecycle() +
             "</div>" +
             '<div class="card listing"><div class="row-actions">' + wicon(f, true) + "<div><h2>" + esc(f.name) + ' <span class="by mono">' + esc(served.v) + '</span></h2><span class="dim small">' + esc(D.author.name) + " · " + esc(catLabel(f.category)) + "</span></div></div>" +
             '<p style="margin-top:8px">' + esc(f.descRu) + "</p>" +
@@ -1851,6 +1949,67 @@
                 esc(T("au.uv.needsColibri.body", { v: served.v, min: needs, have: "1.3.1", installed: installed })) + "</p></div>" : "") +
             (waiting ? '<div class="row-actions" style="margin-top:12px">' + updateBtn("", T("au.uv.updateTo", { v: served.v })) + "</div>" : "") +
             "</div></div>"
+        );
+    }
+
+    /* What a user sees when the author ends a widget's life or hands it over: the catalog row as
+       someone without the widget sees it, and the «Мои виджеты» row of someone who has it. The cases
+       are drawn on «Старый тикер» whatever its state on the author's side. Nothing here stops the
+       widget: every line says it keeps working. */
+    var UV_LIFE = ["normal", "deprecated", "link", "withdrawn", "takendown", "gone", "owner"];
+    function uvLifecycle() {
+        var x = find("b09e4a72-5d31-4c8f-a6e0-3f7b28d1c954");
+        if (!x) return "";
+        var c = S.uvLife;
+        var succ = successorName(x.successor || "crypto-market-map");
+        var next = "2.2.0";
+        var byline = c === "owner" ? D.incoming.from : D.author.name;
+        var seg = UV_LIFE.map(function (k) {
+            return '<button type="button" data-act="uv-life" data-v="' + k + '" aria-pressed="' + (c === k) + '">' + esc(T("au.uv.life." + k)) + "</button>";
+        }).join("");
+        var openSucc = '<button class="btn btn-sm" data-act="uv-open-successor">' + esc(T("au.uv.life.openSuccessor")) + "</button>";
+        var head = '<div class="t">' + esc(x.name) + ' <span class="by">' + esc(byline) + "</span>";
+        /* the catalog: a deprecated widget is still there, last in every order; the others are not */
+        var cat;
+        if (c === "normal" || c === "owner" || c === "deprecated") {
+            var catLine = c === "deprecated" ? '<div class="d life-line">' + icon("warn", "sm") + " " + esc(T("au.uv.life.catDeprecated", { name: succ })) + "</div>"
+                : c === "owner" ? '<div class="d">' + esc(T("au.uv.life.ownerSince", { date: fmtDate(D.NOW - 6 * D.DAY) })) + "</div>"
+                : '<div class="d">' + esc(x.descRu) + "</div>";
+            cat =
+                '<div class="cat-row">' + wicon(x) + '<div style="min-width:0">' + head + (c === "deprecated" ? ' <span class="chip chip-warn">' + esc(T("au.dep.chip")) + "</span>" : "") + "</div>" + catLine + "</div>" +
+                '<div class="row-actions">' + (c === "deprecated" ? openSucc : "") + '<button class="btn btn-sm btn-fetch" data-act="' + (c === "deprecated" ? "uv-install-dep" : "uv-install") + '">' + esc(T("au.uv.life.install")) + "</button></div></div>";
+        } else cat = '<p class="hint" style="padding:4px 2px">' + esc(T("au.uv.life.notInCatalog." + c)) + "</p>";
+        /* «Мои виджеты»: the line under the name, and an update only while one can still come */
+        var updates = c === "link" || c === "owner";
+        var mine;
+        if (c === "deprecated") mine = '<div class="d life-line">' + icon("warn", "sm") + " " + esc(T("au.uv.life.myDeprecated", { name: succ })) + "</div>";
+        else if (c === "withdrawn" || c === "takendown" || c === "gone") mine = '<div class="d life-line">' + icon("warn", "sm") + " " + esc(T("au.uv.life.my." + c)) + "</div>";
+        else if (c === "owner") mine = '<div class="d life-line">' + icon("transfer", "sm") + " " + esc(T("au.uv.life.myOwner", { from: D.incoming.from, date: fmtDate(D.NOW - 6 * D.DAY) })) + "</div>";
+        else if (c === "link") mine = '<div class="d">' + esc(T("au.uv.life.myLink")) + "</div>";
+        else mine = '<div class="d">' + esc(T("au.uv.running")) + "</div>";
+        var my =
+            '<div class="cat-row my-row">' + wicon(x) + '<div style="min-width:0"><div class="t">' + esc(x.name) + ' <span class="by mono">2.1.0</span></div>' + mine + "</div>" +
+            '<div class="row-actions">' + (c === "deprecated" ? openSucc : "") + (updates ? '<button class="btn btn-sm btn-fetch" data-act="uv-life-update">' + esc(T("au.uv.updateTo", { v: next })) + "</button>" : "") +
+            '<button class="btn btn-sm btn-icon" data-toast="au.toast.later" aria-label="⋯">⋯</button><span class="uv-switch" aria-hidden="true"></span></div></div>';
+        return (
+            '<h3 class="uv-sub" style="margin-top:22px">' + esc(T("au.uv.life.heading", { name: x.name })) + "</h3>" +
+            '<div class="uv-case"><div class="seg">' + seg + "</div></div>" +
+            '<p class="hint" style="margin:2px 0 6px">' + esc(T("au.uv.life.case." + c)) + "</p>" +
+            '<div class="dim small" style="margin:8px 0 4px">' + esc(T("au.uv.life.catalogAs")) + "</div>" + cat +
+            '<div class="dim small" style="margin:10px 0 4px">' + esc(T("au.uv.life.mineAs")) + "</div>" + my +
+            '<p class="hint" style="margin-top:8px">' + esc(T("au.uv.life.rule")) + "</p>"
+        );
+    }
+    /* installing a deprecated widget asks first, and the replacement is one click away */
+    function installDeprecatedDialog() {
+        var x = find("b09e4a72-5d31-4c8f-a6e0-3f7b28d1c954");
+        var e = catalogEntry(x.successor || "crypto-market-map");
+        S.dlg = "install-dep";
+        openDialog(
+            "mid",
+            dlgHead(T("au.uv.life.dlg.title", { name: x.name })) +
+                "<p>" + esc(T("au.uv.life.dlg.body", { name: e.name, author: e.author })) + "</p>" +
+                '<div class="actions"><button class="btn" data-act="dlg-close">' + esc(T("au.cancel")) + '</button><button class="btn" data-act="uv-open-successor">' + esc(T("au.uv.life.openSuccessor")) + '</button><button class="btn btn-primary" data-act="uv-install">' + esc(T("au.uv.life.dlg.anyway")) + "</button></div>"
         );
     }
 
@@ -1981,11 +2140,105 @@
                 '</select></label><label class="field"><span>' + esc(T("au.listing.descRu")) + '</span><textarea class="textarea" id="n-desc" maxlength="400"></textarea></label>' +
                 '<div class="row-actions">' + '<span class="wicon none">' + icon("puzzle", "sm") + '</span><button class="btn btn-sm" type="button" data-toast="au.toast.iconPicked">' + esc(T("au.listing.chooseIcon")) + "</button></div></div></details>" +
                 '<p class="err" id="n-err" hidden>' + esc(T("au.new.nameRequired")) + "</p></div>" +
+                /* the other way a widget becomes this author's: someone hands it over with a code */
+                '<p class="hint" style="margin-top:10px">' + esc(T("au.tr.in.ask")) + ' <button class="btn btn-link btn-sm" data-act="accept-transfer"' + (isMaint() ? ownerOnlyAttrs() : "") + ">" + esc(T("au.tr.in.open")) + "</button></p>" +
                 '<div class="actions"><span class="hint" style="margin-right:auto;align-self:center">' + esc(T("au.new.idByNest")) + '</span><button class="btn" data-act="dlg-close">' + esc(T("au.cancel")) + '</button><button class="btn btn-primary" data-act="create-widget">' + esc(T("au.new.create")) + "</button></div>"
         );
         setTimeout(function () {
             var n = document.getElementById("n-name");
             if (n) n.focus();
+        }, 30);
+    }
+
+    /* ---------- lifecycle dialogs ---------- */
+    /* «Только по ссылке» from the catalog happens at once, so it says what it does first */
+    function visLinkDialog(w) {
+        confirmDialog(T("au.vis.link.title", { name: w.name }), esc(T("au.vis.link.body")), T("au.vis.link.ok"), "do-vis-link", false, 'data-id="' + esc(w.id) + '"');
+    }
+    /* the successor picker: the public catalog, searched by name or author, or no replacement at all */
+    function successorDialog(w) {
+        S.dlg = "successor";
+        S.succ = { id: w.id, pick: w.deprecated ? w.successor || "" : "", q: "" };
+        openDialog(
+            "mid",
+            dlgHead(T("au.dep.dlg.title", { name: w.name })) +
+                '<p class="dim">' + esc(T("au.dep.dlg.body")) + "</p>" +
+                '<input class="input" id="succ-q" placeholder="' + esc(T("au.dep.dlg.search")) + '" autocomplete="off"/>' +
+                '<div class="succ-list" id="succ-list">' + successorRows(w) + "</div>" +
+                '<p class="hint">' + esc(T("au.dep.dlg.hint")) + "</p>" +
+                '<div class="actions"><button class="btn" data-act="dlg-close">' + esc(T("au.cancel")) + '</button><button class="btn btn-primary" data-act="do-deprecate" data-id="' + esc(w.id) + '">' + esc(w.deprecated ? T("au.save") : T("au.dep.dlg.ok")) + "</button></div>"
+        );
+        setTimeout(function () {
+            var q = document.getElementById("succ-q");
+            if (q) q.focus();
+        }, 30);
+    }
+    function successorRows(w) {
+        var pick = S.succ.pick;
+        var none = '<label class="radio succ-row"><input type="radio" name="succ" value=""' + (pick ? "" : " checked") + ' data-act="succ-pick"/><span class="wicon none">' + icon("x", "sm") + "</span><div><b>" + esc(T("au.dep.dlg.none")) + "</b><span>" + esc(T("au.dep.dlg.noneBody")) + "</span></div></label>";
+        var list = successorCandidates(w, S.succ.q);
+        var rows = list
+            .map(function (e) {
+                return '<label class="radio succ-row"><input type="radio" name="succ" value="' + esc(e.id) + '"' + (pick === e.id ? " checked" : "") + ' data-act="succ-pick"/>' + catIcon(e) + "<div><b>" + esc(e.name) + "</b><span>" + esc(e.author) + "</span></div></label>";
+            })
+            .join("");
+        return none + (rows || '<p class="hint" style="padding:6px 2px">' + esc(T("au.dep.dlg.nothing")) + "</p>");
+    }
+    /* the transfer: first what moves and what does not, then the code — shown once */
+    function transferDialog(w) {
+        S.dlg = "transfer";
+        var items = ["au.tr.dlg.moves", "au.tr.dlg.stays", "au.tr.dlg.review", "au.tr.dlg.marks", "au.tr.dlg.users"]
+            .map(function (k) {
+                return "<li>" + esc(T(k)) + "</li>";
+            })
+            .join("");
+        openDialog(
+            "mid",
+            dlgHead(T("au.tr.dlg.title", { name: w.name })) +
+                '<p class="dim">' + esc(T("au.tr.dlg.body")) + "</p>" +
+                '<ul class="dim small" style="margin:8px 0 0 18px;display:grid;gap:4px">' + items + "</ul>" +
+                (w.transfer ? '<p class="hint" style="margin-top:8px">' + esc(T("au.tr.dlg.voidsOld")) + "</p>" : "") +
+                '<div class="actions"><button class="btn" data-act="dlg-close">' + esc(T("au.cancel")) + '</button><button class="btn btn-primary" data-act="do-transfer" data-id="' + esc(w.id) + '">' + esc(T("au.tr.dlg.ok")) + "</button></div>"
+        );
+    }
+    function transferCodeDialog(w) {
+        S.dlg = "transfer-code";
+        openDialog(
+            "mid",
+            dlgHead(T("au.tr.code.title", { name: w.name })) +
+                '<p class="dim">' + esc(T("au.tr.code.body", { date: fmtDate(w.transfer.until) })) + "</p>" +
+                codeBox(D.author.codes.transfer) +
+                '<p class="hint" style="margin-top:6px">' + esc(T("au.tr.code.where")) + "</p>" +
+                '<div class="actions"><button class="btn btn-primary" data-act="dlg-close">' + esc(T("au.tr.code.done")) + "</button></div>"
+        );
+    }
+    /* the receiving author: the code, then what they would get and from whom, then «Принять» */
+    function acceptTransferDialog(err) {
+        S.dlg = "accept-transfer";
+        var inc = D.incoming;
+        if (S.trPreview) {
+            var w = inc.widget;
+            openDialog(
+                "mid",
+                dlgHead(T("au.tr.in.title")) +
+                    '<div class="row-actions" style="gap:10px;margin:4px 0 10px">' + wicon(w, true) + '<div><b class="ph">' + esc(w.name) + '</b><div class="dim small">' + esc(T("au.tr.in.from", { from: inc.from })) + " · " + esc(catLabel(w.category)) + ' · <span class="mono">' + esc(current(w).v) + "</span></div></div></div>" +
+                    '<ul class="dim small" style="margin:0 0 0 18px;display:grid;gap:4px"><li>' + esc(T("au.tr.in.gets")) + "</li><li>" + esc(T("au.tr.in.review")) + "</li><li>" + esc(T("au.tr.in.byline")) + "</li></ul>" +
+                    '<p class="hint" style="margin-top:8px">' + esc(T("au.tr.in.expires", { date: fmtDate(inc.expires) })) + "</p>" +
+                    '<div class="actions"><button class="btn" data-act="dlg-close">' + esc(T("au.cancel")) + '</button><button class="btn btn-primary" data-act="do-accept-transfer">' + esc(T("au.tr.in.accept")) + "</button></div>"
+            );
+            return;
+        }
+        openDialog(
+            "mid",
+            dlgHead(T("au.tr.in.title")) +
+                '<p class="dim">' + esc(T("au.tr.in.body")) + "</p>" +
+                '<div class="share"><input class="input mono" id="tr-code" placeholder="' + esc(T("au.tr.in.codePh")) + '" autocomplete="off"/><button class="btn btn-primary" data-act="preview-transfer">' + esc(T("au.tr.in.check")) + "</button></div>" +
+                (err ? '<p class="err">' + esc(err) + "</p>" : "") +
+                '<div class="mock-examples">' + esc(T("au.redeem.examples")) + ' <button class="btn btn-link btn-sm" data-act="redeem-example" data-target="tr-code" data-text="' + esc(inc.code) + '">' + esc(T("au.tr.in.example")) + "</button></div>"
+        );
+        setTimeout(function () {
+            var c = document.getElementById("tr-code");
+            if (c) c.focus();
         }, 30);
     }
 
@@ -2444,6 +2697,76 @@
                 go("#/");
                 window.NEST.toast(T("au.toast.deleted"));
                 break;
+            /* lifecycle: the visibility switch, out of date with a successor, transfer by code */
+            case "do-vis-link":
+                w.visibility = "link";
+                w.catalogRequested = false;
+                if (w.state === "live") w.state = "link";
+                closeDialog();
+                render();
+                window.NEST.toast(T("au.toast.nowLinkOnly"));
+                break;
+            case "deprecate":
+                successorDialog(w);
+                break;
+            case "succ-pick":
+                S.succ.pick = el.value;
+                break;
+            case "do-deprecate": {
+                var was = w.deprecated;
+                w.deprecated = true;
+                w.successor = S.succ.pick || null;
+                closeDialog();
+                render();
+                window.NEST.toast(was ? T("au.toast.successorSaved") : T("au.toast.deprecated"));
+                break;
+            }
+            case "undeprecate":
+                w.deprecated = false;
+                w.successor = null;
+                render();
+                window.NEST.toast(T("au.toast.undeprecated"));
+                break;
+            case "transfer":
+                transferDialog(w);
+                break;
+            case "do-transfer":
+                w.transfer = { until: D.NOW + 7 * D.DAY };
+                render();
+                transferCodeDialog(w);
+                break;
+            case "cancel-transfer":
+                w.transfer = null;
+                render();
+                window.NEST.toast(T("au.toast.transferCancelled"));
+                break;
+            case "accept-transfer":
+                S.trPreview = false;
+                acceptTransferDialog();
+                break;
+            case "preview-transfer": {
+                var tc = (document.getElementById("tr-code") || {}).value || "";
+                if (!sameCode(tc, D.incoming.code)) acceptTransferDialog(T("au.tr.in.unknown"));
+                else {
+                    S.trPreview = true;
+                    acceptTransferDialog();
+                }
+                break;
+            }
+            case "do-accept-transfer": {
+                var got = D.incoming.widget;
+                if (!find(got.id)) {
+                    got.ownerSince = D.NOW;
+                    got.ownerFrom = D.incoming.from;
+                    widgets().unshift(got);
+                }
+                S.trPreview = false;
+                S.received = got.id;
+                closeDialog();
+                go("#/w/" + encodeURIComponent(got.id) + "/access");
+                window.NEST.toast(T("au.toast.transferAccepted", { name: got.name }));
+                break;
+            }
             case "save-listing":
                 saveListing(w);
                 break;
@@ -2607,6 +2930,24 @@
             case "uv-history":
                 S.uvHistory = !S.uvHistory;
                 render();
+                break;
+            case "uv-life":
+                S.uvLife = el.getAttribute("data-v");
+                render();
+                break;
+            case "uv-install-dep":
+                installDeprecatedDialog();
+                break;
+            case "uv-install":
+                closeDialog();
+                window.NEST.toast(T("au.toast.uvInstalled"));
+                break;
+            case "uv-open-successor":
+                closeDialog();
+                window.NEST.toast(T("au.toast.uvOpenedSuccessor", { name: successorName((find("b09e4a72-5d31-4c8f-a6e0-3f7b28d1c954") || {}).successor || "crypto-market-map") }));
+                break;
+            case "uv-life-update":
+                window.NEST.toast(T("au.toast.updated"));
                 break;
             case "wiz-back":
                 S.wiz.step = S.wiz.from && S.wiz.step === 4 ? 2 : S.wiz.step - 1;
@@ -2792,11 +3133,29 @@
         } else if (el.getAttribute("data-act") === "wiz-vis") {
             S.wiz.visibility = el.value;
         } else if (el.getAttribute("data-act") === "vis") {
-            window.NEST.toast(el.value === "catalog" ? T("au.toast.catalogRequested") : T("au.toast.nowLinkOnly"));
+            /* the radios redraw from the widget, so a cancelled confirm leaves them as they were */
+            var w = find(el.getAttribute("data-id"));
+            var toLink = el.value === "link";
+            render();
+            if (toLink && w.visibility === "catalog") visLinkDialog(w);
+            else if (toLink && w.catalogRequested) {
+                w.catalogRequested = false;
+                render();
+                window.NEST.toast(T("au.toast.catalogRequestWithdrawn"));
+            } else if (!toLink && w.visibility === "link" && !w.catalogRequested) {
+                w.catalogRequested = true;
+                render();
+                window.NEST.toast(T("au.toast.catalogRequested"));
+            }
         }
     }
     function onInput(e) {
         var el = e.target;
+        if (el.id === "succ-q" && S.succ) {
+            S.succ.q = el.value;
+            var list = document.getElementById("succ-list");
+            if (list) list.innerHTML = successorRows(find(S.succ.id));
+        }
         if (el.id === "redeem-value" || el.id === "replace-value") {
             S.redeem.where = el.id === "redeem-value" ? "onboard" : "profile";
             S.redeem.value = el.value;
