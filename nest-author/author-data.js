@@ -30,6 +30,9 @@ window.AUTHOR_DATA = (function () {
             tags: ["funding", "screener"],
             descRu: "Ставки финансирования по шести биржам — в годовых, отсортированы по экстремальности, с обратным отсчётом расчёта и алертами по порогу.",
             descEn: "Funding rates across six venues, annualized and sorted by extremity, with settlement countdowns and threshold alerts.",
+            /* the moderators' «Партнёрский» mark — invented; the mock bar's «партнёр» switch decides
+               whether any mark is set at all */
+            partner: true,
             iconSet: true,
             sizeBytes: 72302,
             surfaces: ["slot", "window"],
@@ -561,10 +564,60 @@ window.AUTHOR_DATA = (function () {
                 }
             ]
         },
+        /* Announcements to users, newest first; all invented. `widget: null` is the author speaking for
+           themselves. One is live per subject at a time; the rest are the history the form shows. */
+        announcements: [
+            {
+                id: 7,
+                widget: null,
+                titleRu: "Стрим в четверг: фандинг на живом рынке",
+                titleEn: "Thursday stream: funding on a live market",
+                textRu: "В четверг в 19:00 по Москве разбираем, как читать фандинг перед расчётом. Вопросы можно задать заранее в нашем чате.",
+                textEn: "Thursday at 19:00 Moscow time we go through reading funding before settlement. Questions welcome in our chat beforehand.",
+                at: ago(1, 5),
+                ends: NOW + 5 * DAY,
+                state: "live"
+            },
+            {
+                id: 5,
+                widget: null,
+                titleRu: "Плановые работы 2 октября",
+                titleEn: "Maintenance on October 2",
+                textRu: "С 03:00 до 04:00 по Москве данные фандинга могут приходить с задержкой.",
+                textEn: "",
+                at: ago(6),
+                ends: ago(2),
+                state: "ended"
+            },
+            {
+                id: 6,
+                widget: "funding-monitor",
+                titleRu: "Фандинг-монитор 1.1: ищем тестеров",
+                titleEn: "",
+                textRu: "Новая версия с OKX почти готова. Хотите попробовать первыми — пишите @colibri_team.",
+                textEn: "",
+                at: ago(2, 1),
+                ends: NOW + 5 * DAY,
+                state: "removed",
+                closed: ago(1, 2),
+                reason: "Контакт для связи в анонсе не нужен — он есть на странице виджета. Уберите ник и опубликуйте снова."
+            },
+            {
+                id: 4,
+                widget: "liquidation-radar",
+                titleRu: "Радар ликвидаций: звук для крупных ликвидаций",
+                titleEn: "Liquidation radar: a sound for large liquidations",
+                textRu: "В следующей версии — отдельный звук для ликвидаций крупнее порога. Ждите на этой неделе.",
+                textEn: "",
+                at: ago(3),
+                ends: NOW + 4 * DAY,
+                state: "live"
+            }
+        ],
         /* The author's feed under the bell, newest first. Only moderator decisions, replies, takedowns and
            Nest's own notices land here — never what the author did. Takedowns and revocations also go
            out by e-mail. The first `unread` rows are new. */
-        unread: 3,
+        unread: 4,
         events: [
             { kind: "review.reply", widget: "funding-monitor", v: "1.1.0", at: ago(0, 3) },
             /* a moderator checked an edit after the fact and removed one picture, saying why */
@@ -574,6 +627,14 @@ window.AUTHOR_DATA = (function () {
                 parts: "скриншот 4",
                 reason: "На скриншоте виден чужой API-ключ — закройте его и загрузите снова.",
                 at: ago(0, 6),
+                ph: true
+            },
+            /* a moderator took an announcement down after the fact, saying why */
+            {
+                kind: "announcement.removed",
+                widget: "funding-monitor",
+                reason: "Контакт для связи в анонсе не нужен — он есть на странице виджета. Уберите ник и опубликуйте снова.",
+                at: ago(1, 2),
                 ph: true
             },
             { kind: "version.declined", widget: "3c9a6f10-8b2d-4e71-b5f4-91d0e7a2c468", v: "1.0.0", reason: "review.excess-permissions", at: ago(2, 4) },

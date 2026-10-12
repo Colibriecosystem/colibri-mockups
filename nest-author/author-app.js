@@ -4,12 +4,13 @@
 
    Routes (each screen is linkable in a review comment):
      #/                      summary of all my widgets
-     #/w/<id>/<section>      a widget page: overview · versions · listing · code · access · stats
+     #/w/<id>/<section>      a widget page: overview · versions · listing · code · access · stats · announce
      #/w/<id>/<section>/release   the same page with the release wizard open
      #/local/<key>           a dev folder Nest has never heard of ("code first")
-     #/profile               profile, this author's keys, recovery and co-maintainers
+     #/profile               profile, this author's keys, recovery, co-maintainers and announcements
    Mock-bar params: ?author=none|empty|yes|maintainer|unreadable|offline  ?scope=first|full  ?vw=800|1024|1280
                     ?starters=ok|offline|none|newer|exists|taken  (the «Из шаблона» cases)
+                    ?partner=none|widget|author|older  (which partner mark is set; «older» is a Nest that has none)
    "maintainer" is the same author seen from a co-maintainer's PC: owner-only actions are disabled. */
 (function () {
     "use strict";
@@ -47,7 +48,9 @@
         pgFor: null /* the page dialog: { id, draft } */,
         starters: ["ok", "offline", "none", "newer", "exists", "taken"].indexOf(params.get("starters")) >= 0 ? params.get("starters") : "ok",
         st: null /* the «Из шаблона» form: { id, key, idValue, parent, steps, busy, canCancel, error } */,
-        stDone: null /* a project created a moment ago: { id, path, edit, node } */
+        stDone: null /* a project created a moment ago: { id, path, edit, node } */,
+        partner: ["none", "widget", "author", "older"].indexOf(params.get("partner")) >= 0 ? params.get("partner") : "author",
+        an: {} /* unsaved announcement drafts: "author" or a widget id → { titleRu, titleEn, textRu, textEn, days } */
     };
     var emptyWidgets = [];
 
@@ -421,7 +424,7 @@
     function bellEvents() {
         /* a widget handed to someone else is no longer the author's, so its row carries its own name */
         return D.events.filter(function (n) {
-            return n.kind === "notice" || n.kind === "widget.transferred" || find(n.widget);
+            return n.kind === "notice" || n.kind === "widget.transferred" || (n.kind === "announcement.removed" && !n.widget) || find(n.widget);
         });
     }
     function bellUnread() {
@@ -466,6 +469,9 @@
                 return T("au.ev.transferred", { w: n.name, to: n.to });
             case "transfer.voided":
                 return T("au.ev.transferVoided", { w: name });
+            /* the author's own announcement has no widget to name */
+            case "announcement.removed":
+                return n.widget ? T("au.ev.announceRemoved", { w: name, reason: n.reason }) : T("au.ev.announceRemovedAuthor", { reason: n.reason });
             default:
                 return T("au.ev.unknown", { w: name });
         }
@@ -484,10 +490,11 @@
                 var text = '<span><span class="' + (n.ph ? "ph" : "") + '">' + esc(eventText(n)) + "</span><small>" + fmtDT(n.at) + (isNew ? ' · <b class="note-new">' + esc(T("au.bell.new")) + "</b>" : "") + "</small></span>";
                 if (n.kind === "notice") return '<a class="note-row' + (isNew ? " is-new" : "") + '" href="' + esc(n.url) + '" target="_blank" rel="noopener" data-act="bell-close">' + dot + text + "</a>";
                 if (n.kind === "widget.transferred") return '<a class="note-row' + (isNew ? " is-new" : "") + '" href="#/" data-act="bell-close">' + dot + text + "</a>";
+                if (n.kind === "announcement.removed" && !n.widget) return '<a class="note-row' + (isNew ? " is-new" : "") + '" href="#/profile" data-act="bell-close">' + dot + text + "</a>";
                 var id = encodeURIComponent(n.widget);
                 var versionKind = n.kind.indexOf("version.") === 0 || n.kind === "review.reply";
                 var accessKind = n.kind.indexOf("catalog.") === 0 || n.kind === "successor.cleared" || n.kind === "transfer.voided";
-                var href = "#/w/" + id + (versionKind ? "/versions" : n.kind === "listing.moderated" ? "/listing" : accessKind ? "/access" : "/overview");
+                var href = "#/w/" + id + (versionKind ? "/versions" : n.kind === "listing.moderated" ? "/listing" : n.kind === "announcement.removed" ? "/announce" : accessKind ? "/access" : "/overview");
                 /* a version's row opens expanded; its conversation is open there whenever it has messages */
                 var open = versionKind ? ' data-open-row="' + esc(n.widget + "@" + n.v) + '"' : "";
                 return '<a class="note-row' + (isNew ? " is-new" : "") + '" href="' + href + '"' + open + ' data-act="bell-close">' + dot + text + "</a>";
@@ -696,7 +703,9 @@
         ["listing", "au.sec.listing", false],
         ["code", "au.sec.code", false],
         ["access", "au.sec.access", false],
-        ["stats", "au.sec.stats", false]
+        ["stats", "au.sec.stats", false],
+        /* only on a widget its author may announce for (canAnnounce) */
+        ["announce", "au.sec.announce", false]
     ];
     function renderWidget(w, sec) {
         var id = encodeURIComponent(w.id);
@@ -726,7 +735,9 @@
             menu + "</div></div>";
         var tabs =
             '<nav class="tabs">' +
-            SECTIONS.map(function (s) {
+            SECTIONS.filter(function (s) {
+                return s[0] !== "announce" || canAnnounce(w);
+            }).map(function (s) {
                 var count = s[0] === "versions" && w.versions.length ? ' <span class="tab-count">' + w.versions.length + "</span>" : "";
                 return '<a class="tab' + (s[2] ? " later" : "") + '" href="#/w/' + id + "/" + s[0] + '"' + (sec === s[0] ? ' aria-current="page"' : "") + ">" + esc(T(s[1])) + count + (s[2] ? later() : "") + "</a>";
             }).join("") +
@@ -737,6 +748,7 @@
         else if (sec === "code") body = renderCode(w);
         else if (sec === "access") body = renderAccess(w);
         else if (sec === "stats") body = renderStats(w);
+        else if (sec === "announce" && canAnnounce(w)) body = renderAnnounceSection(w);
         else body = renderOverview(w);
         var greet = "";
         if (S.created === w.id) {
@@ -1905,7 +1917,8 @@
             '</div><div class="stack">' +
             '<div class="card"><h2 class="sec">' + esc(T("au.p.idHeading")) + '</h2><div class="share"><input class="input mono ph" readonly value="' + esc(thisKey()) + '"/><button class="btn" data-act="copy" data-text="' + esc(thisKey()) + '">' + icon("copy") + esc(T("au.copy")) + "</button></div>" +
             '<p class="hint" style="margin-top:6px">' + esc(T("au.p.idHint")) + "</p></div>" +
-            '<div class="card later"><h2 class="sec">' + icon("megaphone") + " " + esc(T("au.p.announce")) + later() + '</h2><p class="dim">' + esc(T("au.p.announceBody")) + "</p></div>" +
+            /* a Nest that knows no partner marks keeps the «скоро» look */
+            (S.partner === "older" ? '<div class="card later"><h2 class="sec">' + icon("megaphone") + " " + esc(T("au.p.announce")) + later() + '</h2><p class="dim">' + esc(T("au.p.announceBody")) + "</p></div>" : "") +
             '<div class="card"><h2 class="sec">' + esc(T("au.p.otherHeading")) + '</h2><details class="more"' + (S.redeem.error && S.redeem.where === "profile" ? " open" : "") + "><summary>" + icon("chevron-right", "sm") + esc(T("au.p.useOther")) + "</summary>" +
             '<p class="hint" style="margin:4px 0">' + esc(T("au.p.useOtherHint")) + "</p>" +
             '<div class="share"><input class="input mono" id="replace-value" placeholder="' + esc(T("au.p.pastePlaceholder")) + '" value="' + esc(S.redeem.where === "profile" ? S.redeem.value : "") + '"/><button class="btn" data-act="replace">' + esc(T("au.p.verify")) + "</button></div>" +
@@ -1914,6 +1927,13 @@
             "</details>" +
             '<div class="row-actions" style="margin-top:10px;border-top:1px solid var(--border);padding-top:10px"><button class="btn btn-danger btn-sm" data-act="forget">' + esc(T("au.p.forget")) + '</button><span class="hint">' + esc(T("au.p.forgetHint")) + "</span></div></div>" +
             "</div></div>" +
+            /* only an author marked «Партнёр» speaks for themselves; everyone else sees nothing here */
+            (authorPartner()
+                ? '<section class="an-section" id="announce"><h2 class="sec">' + icon("megaphone") + " " + esc(T("au.p.announce")) + ' <span class="chip chip-ok">' + esc(T("au.an.partner")) + "</span>" +
+                  (maint ? ' <span class="chip">' + icon("lock", "sm") + esc(T("au.ownerOnly")) + "</span>" : "") + "</h2>" +
+                  '<p class="dim" style="margin-bottom:10px">' + esc(T("au.an.lede.author")) + "</p>" +
+                  announceBlock("author", null, maint) + "</section>"
+                : "") +
             devices +
             people
         );
@@ -1937,6 +1957,194 @@
                 })
                 .join(" · ") +
             "</div>"
+        );
+    }
+
+    /* ================================================================== announcements */
+    /* Who may announce. An author marked «Партнёр» speaks for themselves and for every widget of theirs
+       in the catalog; any other author only for their own widgets marked «Партнёрский». An older Nest
+       knows neither mark, so the profile keeps its «скоро» card. Nest is the gate; the terminal only
+       hides what Nest would refuse. */
+    function authorPartner() {
+        return S.partner === "author";
+    }
+    function canAnnounce(w) {
+        if (phaseOf(w) !== "live") return false;
+        return authorPartner() || (S.partner === "widget" && !!w.partner);
+    }
+    var AN_DAYS_DEFAULT = 7;
+    var AN_DAYS_MAX = 14;
+    /* key: "author" for the author's own, otherwise a widget id */
+    function annOf(key) {
+        var widget = key === "author" ? null : key;
+        return D.announcements.filter(function (a) {
+            return a.widget === widget;
+        });
+    }
+    function annState(a) {
+        return a.state === "live" && a.ends <= D.NOW ? "ended" : a.state;
+    }
+    function annLive(key) {
+        return (
+            annOf(key).filter(function (a) {
+                return annState(a) === "live";
+            })[0] || null
+        );
+    }
+    function annDraft(key) {
+        if (!S.an[key]) S.an[key] = { titleRu: "", titleEn: "", textRu: "", textEn: "", days: AN_DAYS_DEFAULT };
+        return S.an[key];
+    }
+    function annTouched(d) {
+        return !!(d.titleRu || d.titleEn || d.textRu || d.textEn);
+    }
+    /* The rule Nest enforces, judged here first: no address of any kind — a scheme, «www.» or a host
+       with a path (t.me/…). A bare «node.js» is a word, not a link. */
+    function looksLikeLink(s) {
+        return /:\/\//.test(s) || /www\./i.test(s) || /[a-z0-9-]+\.[a-z]{2,}\//i.test(s);
+    }
+    function annProblem(d) {
+        if ([d.titleRu, d.titleEn, d.textRu, d.textEn].some(looksLikeLink)) return T("au.an.err.link");
+        if (d.textRu.trim() && !d.titleRu.trim()) return T("au.an.err.titleRu");
+        if (d.textEn.trim() && !d.titleEn.trim()) return T("au.an.err.titleEn");
+        if (!d.titleRu.trim() && !d.titleEn.trim()) return T("au.an.err.title");
+        return null;
+    }
+    function daysText(n) {
+        var m10 = n % 10;
+        var m100 = n % 100;
+        var k = m10 === 1 && m100 !== 11 ? "au.an.day1" : m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14) ? "au.an.day2" : "au.an.day5";
+        return T(k, { n: n });
+    }
+    /* the draft as it would go out: it ends the chosen number of days from now */
+    function annDraftView(d) {
+        return { titleRu: d.titleRu.trim(), titleEn: d.titleEn.trim(), textRu: d.textRu.trim(), textEn: d.textEn.trim(), ends: D.NOW + d.days * D.DAY, mine: true };
+    }
+    /* A user reads their own language and falls back to the other one; the mock's user reads Russian. */
+    function annTitle(a) {
+        return a.titleRu || a.titleEn;
+    }
+    function annText(a) {
+        return a.titleRu ? a.textRu : a.textEn;
+    }
+    /* one row as it would sit under the user's bell in the Nest window */
+    function annPreview(w, a) {
+        var who = w ? wicon(w) : '<span class="avatar an-avatar">' + esc(D.author.name.charAt(0)) + "</span>";
+        var title = a ? annTitle(a) : "";
+        var text = a ? annText(a) : "";
+        return (
+            '<div class="an-row">' + who +
+            '<span class="an-row-main"><b class="' + (a && !a.mine ? "ph" : "") + '">' + esc(title || T("au.an.previewEmpty")) + "</b>" +
+            (text ? '<span class="an-row-text">' + esc(text) + "</span>" : "") +
+            "<small>" + esc(w ? w.name : D.author.name) + (a ? " · " + esc(T("au.an.until", { date: fmtDate(a.ends) })) : "") + "</small></span></div>"
+        );
+    }
+    /* One block for both levels: the author's on the profile and a widget's in its «Анонс» section.
+       The form on the left; on the right what users see now, how a row reads, and what came before. */
+    function announceBlock(key, w, readOnly) {
+        var d = annDraft(key);
+        var live = annLive(key);
+        var sub = ' data-subj="' + esc(key) + '"';
+        var dis = readOnly ? " disabled" : "";
+        var problem = annProblem(d);
+        function field(f, label, max, area) {
+            var ctl = area
+                ? '<textarea class="textarea an-text" data-an="' + f + '"' + sub + ' maxlength="' + max + '" data-count="' + max + '" placeholder="' + esc(T("au.an.textPh")) + '"' + dis + ">" + esc(d[f]) + "</textarea>"
+                : '<input class="input" data-an="' + f + '"' + sub + ' maxlength="' + max + '" data-count="' + max + '" placeholder="' + esc(T("au.an.titlePh")) + '" value="' + esc(d[f]) + '"' + dis + "/>";
+            return "<label>" + esc(T(label)) + '</label><div class="ctl">' + ctl + '<span class="counter">' + d[f].length + " / " + max + "</span></div>";
+        }
+        var days = "";
+        for (var n = 1; n <= AN_DAYS_MAX; n++) days += '<option value="' + n + '"' + (d.days === n ? " selected" : "") + ">" + esc(daysText(n)) + "</option>";
+        var form =
+            '<div class="card"><h3 class="lp-sub" style="margin-top:0">' + esc(T("au.an.new")) + "</h3>" +
+            '<div class="form-grid">' +
+            field("titleRu", "au.an.titleRu", 80) +
+            field("textRu", "au.an.textRu", 500, true) +
+            field("titleEn", "au.an.titleEn", 80) +
+            field("textEn", "au.an.textEn", 500, true) +
+            "<label>" + esc(T("au.an.days")) + '</label><div class="ctl"><div class="row-actions"><select class="select" data-an="days"' + sub + dis + ">" + days + "</select>" +
+            '<span class="hint" id="an-until-' + esc(key) + '">' + esc(T("au.an.until", { date: fmtDate(D.NOW + d.days * D.DAY) })) + "</span></div></div>" +
+            "</div>" +
+            '<p class="hint" style="margin-top:8px">' + esc(T("au.an.langHint")) + "</p>" +
+            '<p class="hint" style="margin-top:4px">' + esc(T("au.an.policy")) + "</p>" +
+            '<p class="err" id="an-err-' + esc(key) + '"' + (annTouched(d) && problem ? "" : " hidden") + ">" + esc(problem || "") + "</p>" +
+            (readOnly ? "" : '<div class="mock-examples">' + esc(T("au.an.examples")) + ' <button class="btn btn-link btn-sm" data-act="an-example"' + sub + ">" + esc(T("au.an.example.link")) + "</button></div>") +
+            '<div class="row-actions" style="margin-top:8px"><button class="btn btn-primary" data-act="an-publish"' + sub + (readOnly ? ownerOnlyAttrs() : problem ? " disabled" : "") + ">" + icon("megaphone") + esc(T("au.an.publish")) + "</button>" +
+            (readOnly ? "" : '<button class="btn" data-act="an-clear"' + sub + ">" + esc(T("au.an.clear")) + "</button>") +
+            "</div></div>";
+        var liveCard =
+            '<div class="card"><h3 class="lp-sub" style="margin-top:0">' + esc(T("au.an.live")) + (live ? ' <span class="chip chip-ok">' + esc(T("au.an.liveChip")) + "</span>" : "") + "</h3>" +
+            (live
+                ? '<div class="an-body"><b class="' + (live.mine ? "" : "ph") + '">' + esc(annTitle(live)) + "</b>" + (annText(live) ? "<p>" + esc(annText(live)) + "</p>" : "") + "</div>" +
+                  '<p class="hint" style="margin-top:4px">' + esc(T("au.an.liveMeta", { at: fmtDate(live.at), until: fmtDate(live.ends) })) + "</p>" +
+                  (readOnly ? "" : '<div class="row-actions" style="margin-top:8px"><button class="btn btn-sm" data-act="an-change"' + sub + ">" + esc(T("au.an.change")) + '</button><button class="btn btn-sm btn-danger" data-act="an-withdraw"' + sub + ">" + esc(T("au.an.withdraw")) + "</button></div>")
+                : '<p class="dim">' + esc(T("au.an.none")) + "</p>") +
+            "</div>";
+        var preview =
+            '<div class="card"><h3 class="lp-sub" style="margin-top:0">' + esc(T("au.an.preview")) + "</h3>" +
+            '<div id="an-preview-' + esc(key) + '">' + annPreview(w, annTouched(d) ? annDraftView(d) : live) + "</div>" +
+            '<p class="hint" style="margin-top:6px">' + esc(T(w ? "au.an.previewHint.widget" : "au.an.previewHint.author")) + "</p></div>";
+        var past = annOf(key)
+            .filter(function (a) {
+                return a !== live;
+            })
+            .slice(0, 5);
+        var history =
+            '<div class="card"><h3 class="lp-sub" style="margin-top:0">' + esc(T("au.an.history")) + "</h3>" +
+            (past.length
+                ? past
+                      .map(function (a) {
+                          var st = annState(a);
+                          return (
+                              '<div class="an-hist"><div class="an-hist-head"><b class="' + (a.mine ? "" : "ph") + '">' + esc(annTitle(a)) + '</b><span class="chip' + (st === "removed" ? " chip-danger" : "") + '">' + esc(T("au.an.st." + st)) + "</span></div>" +
+                              "<small>" + esc(T("au.an.historyMeta", { from: fmtDate(a.at), to: fmtDate(a.closed || a.ends) })) + "</small>" +
+                              (st === "removed" && a.reason ? '<p class="an-reason">' + esc(a.reason) + "</p>" : "") +
+                              "</div>"
+                          );
+                      })
+                      .join("")
+                : '<p class="dim">' + esc(T("au.an.historyEmpty")) + "</p>") +
+            "</div>";
+        return '<div class="grid-2"><div class="stack">' + form + '</div><div class="stack">' + liveCard + preview + history + "</div></div>";
+    }
+    /* the form follows every keystroke without a re-render that would take the caret away */
+    function annSync(key) {
+        var d = annDraft(key);
+        var problem = annProblem(d);
+        var err = document.getElementById("an-err-" + key);
+        if (err) {
+            err.hidden = !(annTouched(d) && problem);
+            err.textContent = problem || "";
+        }
+        var btn = document.querySelector('[data-act="an-publish"][data-subj="' + key + '"]');
+        if (btn && !btn.title) btn.disabled = !!problem;
+        var until = document.getElementById("an-until-" + key);
+        if (until) until.textContent = T("au.an.until", { date: fmtDate(D.NOW + d.days * D.DAY) });
+        var pv = document.getElementById("an-preview-" + key);
+        if (pv) pv.innerHTML = annPreview(key === "author" ? null : find(key), annTouched(d) ? annDraftView(d) : annLive(key));
+    }
+    /* Publishing over a live one replaces it at once; the old one goes to the history as «снят вами». */
+    function annPublish(key) {
+        var d = annDraft(key);
+        var live = annLive(key);
+        if (live) {
+            live.state = "withdrawn";
+            live.closed = D.NOW;
+        }
+        var v = annDraftView(d);
+        v.id = Date.now();
+        v.widget = key === "author" ? null : key;
+        v.at = D.NOW;
+        v.state = "live";
+        D.announcements.unshift(v);
+        delete S.an[key];
+        render();
+        window.NEST.toast(T("au.toast.anPublished"));
+    }
+    function renderAnnounceSection(w) {
+        return (
+            '<div class="banner banner-info">' + icon("megaphone") + '<div class="banner-body">' + esc(T("au.an.lede.widget", { w: w.name })) + (S.partner === "widget" ? " " + esc(T("au.an.lede.mark")) : "") + "</div></div>" +
+            announceBlock(w.id, w, false)
         );
     }
 
@@ -3314,7 +3522,60 @@
                 closeDialog();
                 redeem("profile", S.redeem.value, D.author.machine);
                 break;
+            /* announcements */
+            case "an-publish": {
+                var anKey = el.getAttribute("data-subj");
+                if (annProblem(annDraft(anKey))) break;
+                var anLive = annLive(anKey);
+                if (anLive) confirmDialog(T("au.an.replace.title"), esc(T("au.an.replace.body", { title: annTitle(anLive) })), T("au.an.replace.ok"), "an-do-publish", false, 'data-subj="' + esc(anKey) + '"');
+                else annPublish(anKey);
+                break;
+            }
+            case "an-do-publish":
+                closeDialog();
+                annPublish(el.getAttribute("data-subj"));
+                break;
+            case "an-withdraw": {
+                var wdLive = annLive(el.getAttribute("data-subj"));
+                if (wdLive) confirmDialog(T("au.an.withdraw.title"), esc(T("au.an.withdraw.body", { title: annTitle(wdLive) })), T("au.an.withdraw.ok"), "an-do-withdraw", true, 'data-subj="' + esc(el.getAttribute("data-subj")) + '"');
+                break;
+            }
+            case "an-do-withdraw": {
+                var gone = annLive(el.getAttribute("data-subj"));
+                closeDialog();
+                if (gone) {
+                    gone.state = "withdrawn";
+                    gone.closed = D.NOW;
+                }
+                render();
+                window.NEST.toast(T("au.toast.anWithdrawn"));
+                break;
+            }
+            /* «Изменить…» starts a new announcement from the live one's words; publishing replaces it */
+            case "an-change": {
+                var chKey = el.getAttribute("data-subj");
+                var chLive = annLive(chKey);
+                if (chLive) S.an[chKey] = { titleRu: chLive.titleRu, titleEn: chLive.titleEn, textRu: chLive.textRu, textEn: chLive.textEn, days: AN_DAYS_DEFAULT };
+                render();
+                break;
+            }
+            case "an-clear":
+                delete S.an[el.getAttribute("data-subj")];
+                render();
+                break;
+            case "an-example": {
+                var ex = annDraft(el.getAttribute("data-subj"));
+                if (!ex.titleRu) ex.titleRu = T("au.an.titlePh");
+                ex.textRu = T("au.an.example.linkText");
+                render();
+                break;
+            }
             /* mock bar */
+            case "partner":
+                S.partner = el.getAttribute("data-v");
+                S.tab = "author";
+                render();
+                break;
             case "vw":
                 S.vw = el.getAttribute("data-v");
                 render();
@@ -3418,6 +3679,12 @@
         if (el.getAttribute("data-count")) {
             var counter = el.parentNode.querySelector(".counter");
             if (counter) counter.textContent = el.value.length + " / " + el.getAttribute("data-count");
+        }
+        var an = el.getAttribute("data-an");
+        if (an) {
+            var subj = el.getAttribute("data-subj");
+            annDraft(subj)[an] = an === "days" ? Number(el.value) : el.value;
+            annSync(subj);
         }
         /* the Listing form: the draft, the card preview and a link's verdict follow every keystroke,
            without a re-render that would take the caret away */
@@ -3585,7 +3852,7 @@
         document.querySelectorAll(".mock-bar [data-act]").forEach(function (b) {
             var act = b.getAttribute("data-act");
             var v = b.getAttribute("data-v");
-            var on = (act === "vw" && v === S.vw) || (act === "author-state" && v === S.author && S.tab === "author") || (act === "scope" && v === S.scope) || (act === "user-view" && S.tab === "catalog") || (act === "starters" && v === S.starters);
+            var on = (act === "vw" && v === S.vw) || (act === "author-state" && v === S.author && S.tab === "author") || (act === "scope" && v === S.scope) || (act === "user-view" && S.tab === "catalog") || (act === "starters" && v === S.starters) || (act === "partner" && v === S.partner);
             if (act !== "tour") b.setAttribute("aria-pressed", String(!!on));
         });
     }
