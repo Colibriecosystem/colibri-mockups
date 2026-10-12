@@ -1,0 +1,283 @@
+/* Variant 2 — tiles. Layout only; the shared fragments are painted by show.css. */
+.v2-main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+.v2-top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+}
+.v2-search {
+    flex: 1;
+}
+.v2-scroll {
+    flex: 1;
+    padding: 12px 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.v2-head {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+}
+.v2-head h2 {
+    font-size: 15px;
+    font-weight: 600;
+}
+
+/* ---- the grid ---- */
+.c2-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(232px, 1fr));
+    grid-auto-flow: dense;
+    gap: 10px;
+}
+.c2 {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px 12px 9px;
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    background: var(--card);
+    box-shadow: var(--shadow-card);
+    min-width: 0;
+}
+.c2:hover {
+    border-color: var(--border-2);
+    background: var(--card-hover);
+}
+.c2-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+.c2-head .act-menu {
+    margin-left: auto;
+    align-self: flex-start;
+}
+.c2-head .act-menu summary {
+    border-color: transparent;
+    background: transparent;
+}
+.c2-id {
+    min-width: 0;
+    flex: 1;
+}
+.c2-name {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    min-width: 0;
+    font-weight: 600;
+    font-size: 13.5px;
+}
+.c2-name > span:first-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.c2-name.big {
+    font-size: 16px;
+    line-height: 22px;
+}
+.c2-by {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    white-space: nowrap;
+}
+.c2-by .chan {
+    margin-left: 0;
+}
+.c2-by .author-link {
+    max-width: 110px;
+    flex: none;
+}
+.c2-by .badges {
+    flex-wrap: nowrap;
+    overflow: hidden;
+}
+.c2-badges {
+    min-height: 18px;
+}
+.c2-cat {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: auto;
+    color: var(--faint);
+    font-size: 11px;
+    white-space: nowrap;
+}
+.c2-cat .icon {
+    width: 12px;
+    height: 12px;
+}
+.c2 .desc,
+.c2 .notes-line {
+    font-size: 12.5px;
+    min-height: 36px;
+}
+.c2-wide .desc,
+.c2-wide .notes-line {
+    min-height: 54px;
+}
+.c2-nums {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1px;
+    border-radius: 6px;
+    overflow: hidden;
+    background: var(--border);
+    border: 1px solid var(--border);
+}
+.c2-nums > div {
+    background: var(--surface-2);
+    padding: 3px 8px;
+    min-width: 0;
+}
+.c2-nums b {
+    display: block;
+    font-size: 13.5px;
+    line-height: 18px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+.c2-nums span {
+    display: block;
+    color: var(--faint);
+    font-size: 10.5px;
+    line-height: 13px;
+    white-space: nowrap;
+}
+.c2-foot {
+    margin-top: auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+/* ---- the partner's wide card ---- */
+.c2-wide {
+    grid-column: span 2;
+    display: grid;
+    grid-template-columns: minmax(150px, 36%) minmax(0, 1fr);
+    padding: 0;
+    gap: 0;
+    overflow: hidden;
+    box-shadow: 0 8px 24px color-mix(in srgb, var(--partner) 14%, transparent);
+}
+.c2-poster {
+    min-height: 100%;
+}
+.c2-wbody {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    padding: 11px 12px 10px;
+    min-width: 0;
+}
+.c2-wide .c2-nums > div {
+    background: color-mix(in srgb, var(--partner) 7%, var(--surface-2));
+}
+.c2-tags {
+    max-height: 20px;
+    overflow: hidden;
+}
+
+/* ---- the partners mosaic ---- */
+.bento {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+}
+.bento-hero {
+    grid-column: span 2;
+    grid-row: span 2;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--partner-border);
+    border-radius: var(--r-xl);
+    overflow: hidden;
+    box-shadow: 0 12px 32px color-mix(in srgb, var(--partner) 16%, transparent);
+}
+.bento-poster {
+    aspect-ratio: 8 / 3;
+}
+.bento-body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 14px 16px;
+    flex: 1;
+}
+.bento-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 10px;
+}
+.bento-name {
+    font-size: 19px;
+    line-height: 24px;
+    font-weight: 600;
+}
+.bento-desc {
+    color: var(--text);
+}
+.bento-hero .stat-tiles {
+    background: var(--partner-border);
+    border-color: var(--partner-border);
+}
+.bento-foot {
+    margin-top: auto;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.bento-small {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--partner-border);
+    border-radius: var(--r-xl);
+    overflow: hidden;
+}
+.bento-sposter {
+    height: 76px;
+}
+.bento-sbody {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    padding: 10px 12px 12px;
+    flex: 1;
+}
+.bento-sbody .desc {
+    font-size: 12.5px;
+}
+.bento-ann {
+    grid-column: 1 / -1;
+}
+@container app (max-width: 900px) {
+    .bento {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .bento-hero {
+        grid-row: auto;
+    }
+    .rail {
+        width: 150px;
+    }
+}

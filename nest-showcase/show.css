@@ -1,0 +1,1270 @@
+/* The showcase mock's shared styles: the terminal's palette, the window frame and every fragment
+   the five variants share. kit/ is the Nest design system, copied and never edited; this file
+   paints over it. A variant's own layout lives in its vN-*.css.
+
+   The palette is the DESKTOP terminal's, not the Nest web app's: these pages preview the Nest
+   window inside the terminal. Surfaces, ink, the orange "fetch bytes" accent, the green "open"
+   and the violet partner tokens are the terminal's theme values for both themes. */
+
+/* ---------- page-level tokens: the terminal's accents ---------- */
+:root {
+    --accent: #cc4d11;
+    --accent-contrast: #ffffff;
+    --open: #22c55e;
+    --open-contrast: #06210f;
+    --partner: #8b5cf6;
+    --partner-surface: #221a3a;
+    --partner-border: #4c3a80;
+    --partner-text: #a78bfa;
+    --new: #f28c55;
+    --metric: #60a5fa;
+}
+:root[data-theme="light"] {
+    --accent: #cc4d11;
+    --accent-contrast: #ffffff;
+    --open: #16a34a;
+    --open-contrast: #ffffff;
+    --partner: #7c3aed;
+    --partner-surface: #f3eeff;
+    --partner-border: #ddd0fb;
+    --partner-text: #6d28d9;
+    --new: #a8420f;
+    --metric: #2563eb;
+}
+@media (prefers-color-scheme: light) {
+    :root:not([data-theme]) {
+        --accent: #cc4d11;
+        --accent-contrast: #ffffff;
+        --open: #16a34a;
+        --open-contrast: #ffffff;
+        --partner: #7c3aed;
+        --partner-surface: #f3eeff;
+        --partner-border: #ddd0fb;
+        --partner-text: #6d28d9;
+        --new: #a8420f;
+        --metric: #2563eb;
+    }
+}
+
+/* ---------- the window's own surfaces (terminal theme values) ---------- */
+.app {
+    --surface: #0e1a2e;
+    --surface-2: #132138;
+    --surface-3: #1c2e49;
+    --card: #15243a;
+    --card-hover: #1a2b45;
+    --border: #1f2d45;
+    --border-2: #2a3a52;
+    --text: #e2e8f0;
+    --dim: #94a3b8;
+    --faint: #64748b;
+    --ok: #22c55e;
+    --warn: #fbbf24;
+    --danger: #ef4444;
+    --info: #60a5fa;
+    --shadow-card: 0 1px 0 rgb(0 0 0 / 0.25);
+    --shadow-pop: 0 12px 32px rgb(0 0 0 / 0.45);
+}
+:root[data-theme="light"] .app {
+    --surface: #ebf2fa;
+    --surface-2: #e2ebf6;
+    --surface-3: #d9e4f2;
+    --card: #ffffff;
+    --card-hover: #f7faff;
+    --border: #d5e2f0;
+    --border-2: #bdc8d8;
+    --text: #0f172a;
+    --dim: #475569;
+    --faint: #8391a5;
+    --ok: #16a34a;
+    --warn: #b45309;
+    --danger: #dc2626;
+    --info: #2563eb;
+    --shadow-card: 0 1px 2px rgb(15 23 42 / 0.06);
+    --shadow-pop: 0 12px 32px rgb(15 23 42 / 0.16);
+}
+.app {
+    --tint-ok-bg: color-mix(in srgb, var(--ok) 13%, var(--card));
+    --tint-ok-border: color-mix(in srgb, var(--ok) 40%, var(--border));
+    --tint-warn-bg: color-mix(in srgb, var(--warn) 13%, var(--card));
+    --tint-warn-border: color-mix(in srgb, var(--warn) 40%, var(--border));
+    --tint-danger-bg: color-mix(in srgb, var(--danger) 13%, var(--card));
+    --tint-danger-border: color-mix(in srgb, var(--danger) 40%, var(--border));
+    --tint-accent-bg: color-mix(in srgb, var(--accent) 13%, var(--card));
+    --tint-accent-border: color-mix(in srgb, var(--accent) 40%, var(--border));
+}
+
+/* ---------- page around the window ---------- */
+.topbar .variants {
+    display: flex;
+    gap: 2px;
+    flex-wrap: wrap;
+}
+.topbar .variants a {
+    padding: 3px 9px;
+    border-radius: var(--r-pill);
+    color: var(--dim);
+    font-size: var(--fs-sm);
+    text-decoration: none;
+}
+.topbar .variants a:hover {
+    color: var(--text);
+    background: var(--surface-2);
+}
+.topbar .variants a[aria-current="page"] {
+    color: var(--text);
+    background: var(--surface-3);
+}
+.vw-ruler {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--s-3);
+    margin: var(--s-4) auto var(--s-2);
+    color: var(--faint);
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: 0.06em;
+}
+.vw-ruler::before,
+.vw-ruler::after {
+    content: "";
+    flex: 1;
+    max-width: 120px;
+    border-top: 1px dashed var(--border-2);
+}
+.variant-head {
+    max-width: 1280px;
+    margin: var(--s-4) auto 0;
+    padding: 0 var(--s-2);
+}
+.variant-head h1 {
+    font-size: var(--fs-xl);
+    line-height: var(--lh-xl);
+    margin: 0;
+}
+.variant-head p {
+    margin: 4px 0 0;
+    color: var(--dim);
+    max-width: 92ch;
+}
+.mock-bar .ph-note {
+    color: var(--warn);
+}
+.mock-bar .sep {
+    color: var(--faint);
+}
+main.page {
+    padding-bottom: 72px;
+}
+
+/* ---------- the Nest window ---------- */
+.app {
+    width: min(100%, var(--ww, 1000px));
+    height: var(--wh, 720px);
+    margin: 0 auto var(--s-6);
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--border-2);
+    border-radius: var(--r-lg);
+    background: var(--surface);
+    color: var(--text);
+    box-shadow: var(--shadow-dialog);
+    overflow: hidden;
+    container-type: inline-size;
+    container-name: app;
+    font-size: 13px;
+    line-height: 18px;
+}
+.app button,
+.app input,
+.app select {
+    font: inherit;
+    color: inherit;
+}
+.app p {
+    margin: 0;
+}
+.app h2,
+.app h3 {
+    margin: 0;
+}
+.win-title {
+    height: 34px;
+    flex: none;
+    display: flex;
+    align-items: center;
+    padding: 0 4px 0 12px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    font-weight: 600;
+}
+.win-name {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+.win-name .icon {
+    color: var(--accent);
+}
+.win-caps {
+    margin-left: auto;
+    display: flex;
+    gap: 2px;
+    color: var(--dim);
+}
+.win-caps span {
+    width: 30px;
+    height: 24px;
+    display: grid;
+    place-items: center;
+    font-size: 11px;
+}
+.win-tabs {
+    flex: none;
+    display: flex;
+    gap: 2px;
+    padding: 0 10px;
+    border-bottom: 1px solid var(--border);
+}
+.win-tabs button {
+    padding: 7px 14px 6px;
+    border-bottom: 2px solid transparent;
+    color: var(--dim);
+    font-size: 12.5px;
+}
+.win-tabs button[aria-current="page"] {
+    color: var(--text);
+    font-weight: 600;
+    border-bottom-color: var(--accent);
+}
+.win-body {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    min-width: 0;
+}
+/* a scrolling column never squeezes its blocks — it scrolls instead */
+.scroll > * {
+    flex-shrink: 0;
+}
+.scroll {
+    overflow-y: auto;
+    overflow-x: hidden;
+    min-height: 0;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-2) transparent;
+}
+
+/* ---------- small utilities ---------- */
+.clamp-1,
+.clamp-2,
+.clamp-3,
+.clamp-4 {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.clamp-1 {
+    -webkit-line-clamp: 1;
+}
+.clamp-2 {
+    -webkit-line-clamp: 2;
+}
+.clamp-3 {
+    -webkit-line-clamp: 3;
+}
+.clamp-4 {
+    -webkit-line-clamp: 4;
+}
+.app .dim {
+    color: var(--dim);
+}
+.app .faint {
+    color: var(--faint);
+}
+.mlauto {
+    margin-left: auto;
+}
+.num {
+    font-variant-numeric: tabular-nums;
+}
+.mono {
+    font-family: var(--font-mono);
+}
+.ver {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--faint);
+    white-space: nowrap;
+}
+.desc {
+    color: var(--dim);
+    white-space: pre-line;
+}
+.notes-line {
+    color: var(--dim);
+}
+.notes-line b {
+    color: var(--warn);
+    font-weight: 600;
+}
+
+/* everything with .ph* is INVENTED for the mock */
+.ph {
+    text-decoration: underline dashed color-mix(in srgb, var(--warn) 70%, transparent);
+    text-underline-offset: 3px;
+}
+.ph-state {
+    position: relative;
+}
+.ph-state::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -4px;
+    border-bottom: 1px dashed color-mix(in srgb, var(--warn) 65%, transparent);
+    pointer-events: none;
+}
+.ph-block {
+    outline: 1px dashed color-mix(in srgb, var(--warn) 70%, transparent);
+    outline-offset: 3px;
+}
+
+/* ---------- widget icon ---------- */
+.wi {
+    width: var(--sz);
+    height: var(--sz);
+    flex: none;
+    display: inline-grid;
+    place-items: center;
+    overflow: hidden;
+    border-radius: calc(var(--sz) * 0.24);
+    background: var(--surface-3);
+    border: 1px solid var(--border);
+}
+.wi img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.wi-mono {
+    border: none;
+    color: #fff;
+    font-weight: 600;
+    font-size: calc(var(--sz) * 0.46);
+    line-height: 1;
+    background: linear-gradient(140deg, color-mix(in srgb, var(--tint) 78%, #fff), var(--tint) 70%);
+}
+
+/* ---------- badges ---------- */
+.badges {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 18px;
+    padding: 0 6px;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    font-size: 10.5px;
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    flex: none;
+}
+.badge .icon {
+    width: 12px;
+    height: 12px;
+}
+.badge-partner {
+    background: var(--partner);
+    border-color: var(--partner);
+    color: #fff;
+}
+.badge-partner.big {
+    height: 24px;
+    padding: 0 10px;
+    border-radius: var(--r-pill);
+    font-size: 11.5px;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--partner) 22%, transparent);
+}
+.badge-partner.big .icon {
+    width: 14px;
+    height: 14px;
+}
+.badge-new {
+    color: var(--new);
+    border-color: color-mix(in srgb, var(--new) 65%, transparent);
+}
+.badge-updated {
+    color: var(--dim);
+    border-color: var(--border-2);
+    font-weight: 500;
+}
+.badge-verified {
+    color: var(--ok);
+    border-color: var(--tint-ok-border);
+}
+
+/* ---------- author line ---------- */
+.author-link {
+    color: var(--dim);
+    font-size: 12px;
+    max-width: 240px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.author-link:hover {
+    color: var(--text);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+.chan {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: 6px;
+    opacity: 0.85;
+    vertical-align: middle;
+}
+.chan:hover {
+    opacity: 1;
+}
+.chan img.yt {
+    height: 11px;
+}
+.chan img.tg {
+    width: 14px;
+    height: 14px;
+}
+.chan.big {
+    padding: 3px 8px;
+    border: 1px solid var(--border-2);
+    border-radius: var(--r-pill);
+    font-size: 11.5px;
+    color: var(--dim);
+    text-decoration: none;
+}
+.chan.big img.yt {
+    height: 13px;
+}
+:root[data-theme="light"] .on-dark,
+:root:not([data-theme="light"]) .on-light {
+    display: none;
+}
+
+/* ---------- buttons and the action cluster ---------- */
+.app .btn {
+    background: var(--card);
+    border-color: var(--border-2);
+}
+.app .btn:hover {
+    background: var(--card-hover);
+}
+.app .btn-primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--accent-contrast);
+}
+.app .btn-primary:hover {
+    background: color-mix(in srgb, var(--accent) 88%, #fff);
+}
+.app .btn-open {
+    background: var(--open);
+    border-color: var(--open);
+    color: var(--open-contrast);
+}
+.app .btn-open:hover {
+    background: color-mix(in srgb, var(--open) 88%, #fff);
+}
+.app .btn-lg {
+    padding: 8px 18px;
+    font-size: 14px;
+    line-height: 20px;
+}
+.app .btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+.app .btn-icon {
+    padding: 3px 6px;
+}
+.app .btn.is-on {
+    border-color: var(--accent);
+    color: var(--text);
+}
+.app .btn .icon {
+    width: 14px;
+    height: 14px;
+}
+.app .btn-stream {
+    background: #e11d48;
+    border-color: #e11d48;
+    color: #fff;
+}
+.acts {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+.act-note {
+    font-size: 11px;
+    line-height: 14px;
+    text-align: right;
+}
+.act-note.warn {
+    color: var(--warn);
+}
+.act-installed {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--ok);
+    font-size: 12px;
+    white-space: nowrap;
+}
+.act-installed .dim {
+    color: var(--dim);
+}
+
+/* ---------- menus (the kit positions them; this paints the buttons) ---------- */
+.app .menu {
+    position: relative;
+    display: inline-block;
+}
+.app .menu > summary {
+    list-style: none;
+}
+.app .menu > summary::-webkit-details-marker {
+    display: none;
+}
+.app .menu-list {
+    background: var(--card);
+    border-color: var(--border-2);
+    box-shadow: var(--shadow-pop);
+    z-index: 40;
+}
+.app .menu-list button,
+.app .menu-list .flag {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 6px 10px;
+    border-radius: var(--r-sm);
+    font-size: 12px;
+    line-height: 16px;
+    text-align: left;
+    white-space: nowrap;
+    color: var(--text);
+}
+.app .menu-list button:hover,
+.app .menu-list .flag:hover {
+    background: var(--surface-3);
+}
+.app .menu-list button[aria-pressed="true"] {
+    color: var(--accent);
+    font-weight: 600;
+}
+.app .menu-list .danger {
+    color: var(--danger);
+}
+.app .menu-list hr {
+    width: 100%;
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 4px 0;
+}
+.app .menu-list .icon {
+    width: 14px;
+    height: 14px;
+}
+.tag-list {
+    width: 240px;
+    gap: 4px;
+}
+.tag-list .input {
+    width: 100%;
+}
+.tag-scroll {
+    max-height: 260px;
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
+}
+.tag-menu summary {
+    position: relative;
+    max-width: 200px;
+}
+.tag-menu summary span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.dot-on {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--open);
+    flex: none;
+}
+
+/* ---------- search, author chip ---------- */
+.search {
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-width: 0;
+}
+.search > .icon {
+    position: absolute;
+    left: 9px;
+    color: var(--faint);
+    pointer-events: none;
+}
+.app .input {
+    width: 100%;
+    height: 30px;
+    padding: 4px 10px 4px 30px;
+    border: 1px solid var(--border-2);
+    border-radius: var(--r);
+    background: var(--card);
+    color: var(--text);
+    font-size: 12.5px;
+}
+.app .input-sm {
+    height: 26px;
+    padding-left: 8px;
+}
+.app .input:focus {
+    outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
+    outline-offset: -1px;
+}
+.author-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 26px;
+    padding: 0 4px 0 9px;
+    border: 1px solid var(--tint-accent-border);
+    background: var(--tint-accent-bg);
+    border-radius: var(--r-pill);
+    font-size: 12px;
+    white-space: nowrap;
+}
+.author-chip button {
+    display: grid;
+    place-items: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+}
+.author-chip button:hover {
+    background: var(--surface-3);
+}
+.author-chip .icon {
+    width: 13px;
+    height: 13px;
+}
+
+/* ---------- section pills ---------- */
+.pills {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding: 1px;
+}
+.pills::-webkit-scrollbar {
+    display: none;
+}
+.pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 28px;
+    padding: 0 12px;
+    border: 1px solid var(--border-2);
+    border-radius: var(--r-pill);
+    color: var(--dim);
+    font-size: 12.5px;
+    white-space: nowrap;
+    flex: none;
+}
+.pill:hover {
+    color: var(--text);
+    border-color: var(--faint);
+}
+.pill .icon {
+    width: 14px;
+    height: 14px;
+}
+.pill .pc {
+    font-size: 10.5px;
+    color: var(--faint);
+    font-variant-numeric: tabular-nums;
+}
+.pill[aria-pressed="true"] {
+    background: var(--text);
+    border-color: var(--text);
+    color: var(--surface);
+}
+.pill[aria-pressed="true"] .pc {
+    color: inherit;
+    opacity: 0.7;
+}
+.pill-new .icon {
+    color: var(--new);
+}
+.pill-partners {
+    color: var(--partner-text);
+    border-color: var(--partner-border);
+    background: color-mix(in srgb, var(--partner) 8%, transparent);
+}
+.pill-partners[aria-pressed="true"] {
+    background: var(--partner);
+    border-color: var(--partner);
+    color: #fff;
+}
+.pill-partners[aria-pressed="true"] .icon {
+    color: #fff;
+}
+.pill-sep {
+    width: 1px;
+    flex: none;
+    background: var(--border-2);
+    margin: 4px 2px;
+}
+
+/* ---------- the left rail (the terminal's) ---------- */
+.rail {
+    flex: none;
+    width: 180px;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding: 10px 8px;
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+}
+.rail-item {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 9px;
+    border-radius: 6px;
+    color: var(--dim);
+    font-size: 12.5px;
+    text-align: left;
+}
+.rail-item .icon {
+    width: 15px;
+    height: 15px;
+    flex: none;
+}
+.rail-item .rl {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.rail-item .rc {
+    margin-left: auto;
+    font-size: 10.5px;
+    color: var(--faint);
+    font-variant-numeric: tabular-nums;
+}
+.rail-item:hover {
+    background: var(--surface-2);
+    color: var(--text);
+}
+.rail-item[aria-pressed="true"] {
+    background: var(--card);
+    color: var(--text);
+    box-shadow: inset 3px 0 0 var(--accent);
+}
+.rail-new .icon {
+    color: var(--new);
+}
+.rail-partners {
+    color: var(--partner-text);
+}
+.rail-partners[aria-pressed="true"] {
+    background: var(--partner-surface);
+    color: var(--partner-text);
+    box-shadow: inset 3px 0 0 var(--partner);
+}
+.rail-sep {
+    margin: 12px 9px 4px;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--faint);
+}
+
+/* ---------- trust facts ---------- */
+.trust {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    color: var(--dim);
+    font-size: 11.5px;
+    white-space: nowrap;
+}
+.tf {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+}
+.tf .icon {
+    width: 13px;
+    height: 13px;
+}
+.tf.ok {
+    color: var(--ok);
+}
+.tf .tf-check {
+    width: 12px;
+    height: 12px;
+    stroke-width: 2.2;
+    margin-left: -1px;
+}
+.tf.warn {
+    color: var(--warn);
+}
+.tf.danger {
+    color: var(--danger);
+}
+
+/* ---------- chips ---------- */
+.app .chip {
+    background: var(--surface-2);
+    border-color: var(--border-2);
+    color: var(--text);
+    font-weight: 500;
+}
+.app .chip-ok {
+    background: var(--tint-ok-bg);
+    border-color: var(--tint-ok-border);
+    color: var(--ok);
+}
+.app .chip-warn {
+    background: var(--tint-warn-bg);
+    border-color: var(--tint-warn-border);
+    color: var(--warn);
+}
+.app .chip-danger {
+    background: var(--tint-danger-bg);
+    border-color: var(--tint-danger-border);
+    color: var(--danger);
+}
+.app .chip-tag {
+    background: transparent;
+    color: var(--dim);
+    cursor: pointer;
+    font-weight: 400;
+}
+.app .chip-tag:hover {
+    color: var(--text);
+    border-color: var(--accent);
+}
+.app .chip-dashed {
+    background: transparent;
+    border-style: dashed;
+    color: var(--dim);
+}
+.chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+.cg {
+    display: grid;
+    gap: 6px;
+}
+.cg-row {
+    display: grid;
+    grid-template-columns: 76px minmax(0, 1fr);
+    gap: 8px;
+    align-items: start;
+}
+.cg-label {
+    color: var(--faint);
+    font-size: 11px;
+    line-height: 18px;
+}
+.host-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+.host-list li {
+    padding: 1px 7px;
+    border-radius: 4px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    color: var(--dim);
+}
+.host-list li.more {
+    border-style: dashed;
+    font-family: var(--font-sans);
+    background: transparent;
+}
+
+/* ---------- numbers ---------- */
+.si {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--dim);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+.si .icon {
+    width: 13px;
+    height: 13px;
+    color: var(--faint);
+}
+.si .u {
+    color: var(--faint);
+}
+.stats-inline {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+.bar {
+    display: block;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--border);
+    overflow: hidden;
+}
+.bar i {
+    display: block;
+    height: 100%;
+    border-radius: 2px;
+    background: var(--metric);
+}
+.bar.partner i {
+    background: var(--partner);
+}
+.stat-tiles {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    overflow: hidden;
+}
+.stat-tile {
+    background: var(--card);
+    padding: 8px 10px;
+    min-width: 0;
+}
+.stat-tile b {
+    display: block;
+    font-size: 17px;
+    line-height: 22px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+.stat-tile span {
+    display: block;
+    color: var(--faint);
+    font-size: 10.5px;
+    line-height: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ---------- the poster: a partner's banner ---------- */
+.poster {
+    position: relative;
+    overflow: hidden;
+    display: grid;
+    place-items: center;
+    align-content: center;
+    gap: 8px;
+    background:
+        radial-gradient(120% 140% at 18% 0%, color-mix(in srgb, var(--tint) 85%, #fff 10%) 0%, transparent 60%),
+        linear-gradient(150deg, color-mix(in srgb, var(--tint) 55%, var(--partner)) 0%, color-mix(in srgb, var(--partner) 55%, #0b0716) 100%);
+    color: #fff;
+}
+:root[data-theme="light"] .poster {
+    background:
+        radial-gradient(120% 140% at 18% 0%, color-mix(in srgb, var(--tint) 70%, #fff 30%) 0%, transparent 60%),
+        linear-gradient(150deg, color-mix(in srgb, var(--tint) 50%, var(--partner)) 0%, color-mix(in srgb, var(--partner) 70%, #2e1065) 100%);
+}
+.poster.neutral {
+    background:
+        radial-gradient(120% 140% at 18% 0%, color-mix(in srgb, var(--tint) 80%, #fff 8%) 0%, transparent 62%),
+        linear-gradient(150deg, color-mix(in srgb, var(--tint) 50%, var(--surface)) 0%, color-mix(in srgb, var(--tint) 18%, var(--surface)) 100%);
+}
+:root[data-theme="light"] .poster.neutral {
+    background:
+        radial-gradient(120% 140% at 18% 0%, color-mix(in srgb, var(--tint) 45%, #fff) 0%, transparent 62%),
+        linear-gradient(150deg, color-mix(in srgb, var(--tint) 30%, #fff) 0%, color-mix(in srgb, var(--tint) 12%, #fff) 100%);
+    color: var(--text);
+}
+.poster-glow {
+    position: absolute;
+    inset: 0;
+    background-image:
+        linear-gradient(rgb(255 255 255 / 0.07) 1px, transparent 1px),
+        linear-gradient(90deg, rgb(255 255 255 / 0.07) 1px, transparent 1px);
+    background-size: 18px 18px;
+    -webkit-mask-image: radial-gradient(90% 90% at 70% 100%, #000 0%, transparent 75%);
+    mask-image: radial-gradient(90% 90% at 70% 100%, #000 0%, transparent 75%);
+    pointer-events: none;
+}
+.poster .poster-icon {
+    position: relative;
+    border: 2px solid rgb(255 255 255 / 0.22);
+    box-shadow: 0 10px 28px rgb(0 0 0 / 0.35);
+}
+.poster-name {
+    position: relative;
+    font-weight: 600;
+    font-size: 15px;
+    text-shadow: 0 1px 8px rgb(0 0 0 / 0.35);
+}
+.poster-note {
+    position: absolute;
+    left: 8px;
+    bottom: 6px;
+    font-size: 10px;
+    line-height: 12px;
+    color: rgb(255 255 255 / 0.75);
+}
+
+/* ---------- partner surface: the one recipe every variant reuses ---------- */
+.is-partner {
+    background:
+        linear-gradient(135deg, color-mix(in srgb, var(--partner) 12%, var(--card)) 0%, var(--card) 70%);
+    border-color: var(--partner-border) !important;
+}
+.is-partner:hover {
+    border-color: var(--partner) !important;
+}
+
+/* ---------- the partner announcement ---------- */
+.ann {
+    display: grid;
+    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.3fr);
+    border: 1px solid var(--partner-border);
+    border-radius: var(--r-xl);
+    overflow: hidden;
+    background: var(--card);
+}
+.ann-pic {
+    aspect-ratio: 16 / 9;
+    display: grid;
+    place-items: center;
+    background:
+        repeating-linear-gradient(45deg, color-mix(in srgb, var(--tint) 30%, transparent) 0 10px, transparent 10px 20px),
+        linear-gradient(140deg, color-mix(in srgb, var(--tint) 60%, var(--partner)), color-mix(in srgb, var(--partner) 50%, #0b0716));
+    color: rgb(255 255 255 / 0.85);
+    font-size: 11px;
+}
+.ann-pic-inner {
+    display: grid;
+    justify-items: center;
+    gap: 6px;
+}
+.ann-body {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 12px 14px;
+    min-width: 0;
+}
+.ann-kicker {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    font-size: 11px;
+    color: var(--partner-text);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+.ann-kicker .dim {
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 400;
+}
+.ann-kicker .icon {
+    width: 14px;
+    height: 14px;
+}
+.ann-title {
+    font-size: 16px;
+    line-height: 22px;
+    font-weight: 600;
+}
+.ann-text {
+    color: var(--dim);
+    font-size: 12.5px;
+}
+.ann-foot {
+    margin-top: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.ann-widget {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 8px 3px 3px;
+    border: 1px solid var(--border-2);
+    border-radius: var(--r-pill);
+    font-size: 12px;
+}
+.ann-widget:hover {
+    border-color: var(--partner);
+}
+
+/* ---------- section headings inside the window ---------- */
+.sec-head {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin: 0 0 8px;
+}
+.sec-head h2 {
+    font-size: 14px;
+    line-height: 20px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+.sec-head h2 .icon {
+    width: 16px;
+    height: 16px;
+}
+.sec-head .sub {
+    color: var(--faint);
+    font-size: 11.5px;
+}
+.sec-head .more-link {
+    margin-left: auto;
+    color: var(--dim);
+    font-size: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    white-space: nowrap;
+}
+.sec-head .more-link:hover {
+    color: var(--text);
+}
+.sec-head.partner h2 {
+    color: var(--partner-text);
+}
+
+/* ---------- pager, empty ---------- */
+.pager-line {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 12px 0 4px;
+    color: var(--faint);
+    font-size: 11.5px;
+}
+.empty {
+    display: grid;
+    justify-items: center;
+    gap: 6px;
+    padding: 48px 16px;
+    color: var(--dim);
+    text-align: center;
+}
+.empty b {
+    color: var(--text);
+    font-size: 14px;
+}
+
+/* ---------- the partners page lead (shared) ---------- */
+.partners-lead {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    border: 1px solid var(--partner-border);
+    border-radius: var(--r-xl);
+    background:
+        radial-gradient(80% 160% at 100% 0%, color-mix(in srgb, var(--partner) 30%, transparent), transparent 70%),
+        var(--partner-surface);
+    overflow: hidden;
+}
+.partners-lead .pl-icon {
+    width: 40px;
+    height: 40px;
+    flex: none;
+    display: grid;
+    place-items: center;
+    border-radius: 12px;
+    background: var(--partner);
+    color: #fff;
+}
+.partners-lead .pl-icon .icon {
+    width: 22px;
+    height: 22px;
+}
+.partners-lead h2 {
+    font-size: 17px;
+    line-height: 22px;
+    color: var(--text);
+}
+.partners-lead p {
+    color: var(--dim);
+    font-size: 12.5px;
+}
+.partners-lead .pl-stats {
+    margin-left: auto;
+    display: flex;
+    gap: 18px;
+    text-align: right;
+}
+.partners-lead .pl-stats b {
+    display: block;
+    font-size: 18px;
+    line-height: 22px;
+    font-variant-numeric: tabular-nums;
+}
+.partners-lead .pl-stats span {
+    font-size: 10.5px;
+    color: var(--faint);
+    white-space: nowrap;
+}
+@container app (max-width: 900px) {
+    .partners-lead .pl-stats {
+        display: none;
+    }
+}

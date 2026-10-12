@@ -1,0 +1,73 @@
+<!doctype html>
+<!-- v4: one of five catalog layouts. This page is only the frame; the window is rendered by
+     core.js (shared fragments) and v4-inspector.js (the layout). See README.md. -->
+<html lang="ru" data-theme="dark" data-title-key="v4.name">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="color-scheme" content="dark light" />
+        <title>Nest</title>
+        <link rel="stylesheet" href="kit/tokens.css" />
+        <link rel="stylesheet" href="kit/components.css" />
+        <link rel="stylesheet" href="show.css" />
+        <link rel="stylesheet" href="v4-inspector.css" />
+        <script src="i18n.js"></script>
+        <script src="kit/icons.js"></script>
+        <script src="kit/mockup.js"></script>
+        <script src="data.js"></script>
+        <script src="core.js"></script>
+        <script src="v4-inspector.js"></script>
+    </head>
+    <body class="console">
+        <header class="topbar">
+            <a class="brand" href="index.html"><span>Nest</span><span class="brand-sub" data-i18n="brand.sub"></span></a>
+            <nav class="variants">
+                <a href="index.html" data-i18n="nav.index"></a>
+                <a href="v1-shelves.html" data-i18n="v1.name"></a>
+                <a href="v2-tiles.html" data-i18n="v2.name"></a>
+                <a href="v3-screener.html" data-i18n="v3.name"></a>
+                <a href="v4-inspector.html" aria-current="page" data-i18n="v4.name"></a>
+                <a href="v5-feed.html" data-i18n="v5.name"></a>
+            </nav>
+            <div class="topbar-right">
+                <div class="seg" role="group" data-i18n-attr="aria-label:lang.label">
+                    <button type="button" data-set-lang="ru">RU</button>
+                    <button type="button" data-set-lang="en">EN</button>
+                </div>
+                <div class="seg" role="group" data-i18n-attr="aria-label:theme.label">
+                    <button type="button" data-set-theme="dark" data-i18n-attr="title:theme.dark,aria-label:theme.dark"><svg class="icon"><use href="#i-moon" /></svg></button>
+                    <button type="button" data-set-theme="light" data-i18n-attr="title:theme.light,aria-label:theme.light"><svg class="icon"><use href="#i-sun" /></svg></button>
+                    <button type="button" data-set-theme="system" data-i18n-attr="title:theme.system,aria-label:theme.system"><svg class="icon"><use href="#i-system" /></svg></button>
+                </div>
+            </div>
+        </header>
+
+        <main class="page page-wide">
+            <div class="variant-head">
+                <h1 data-i18n="v4.title"></h1>
+                <p data-i18n="v4.lead"></p>
+            </div>
+            <div class="vw-ruler"><span id="vw-ruler-value"></span></div>
+            <div class="app" id="app"></div>
+        </main>
+
+        <div class="mock-bar">
+            <span class="label" data-i18n="mock.label"></span>
+            <span data-i18n="mock.width"></span>
+            <button type="button" data-vw="780">780 · <span data-i18n="mock.min"></span></button>
+            <button type="button" data-vw="1000">1000 · <span data-i18n="mock.default"></span></button>
+            <button type="button" data-vw="1280">1280</button>
+            <span class="sep">·</span>
+            <span data-i18n="mock.height"></span>
+            <button type="button" data-vh="560">560</button>
+            <button type="button" data-vh="720">720</button>
+            <button type="button" data-vh="900">900</button>
+            <span class="sep">·</span>
+            <span data-i18n="mock.section"></span>
+            <button type="button" data-jump="new" data-i18n="mock.jump.new"></button>
+            <button type="button" data-jump="partners" data-i18n="mock.jump.partners"></button>
+            <button type="button" data-jump="all" data-i18n="mock.jump.all"></button>
+            <span class="ph-note" data-i18n="mock.note"></span>
+        </div>
+    </body>
+</html>

@@ -1,0 +1,267 @@
+<!doctype html>
+<!-- The showcase index: what the five variants are, what is real and what is drawn, and the review
+     checklist. Mirrors nest-catalog/index.html. -->
+<html lang="ru" data-theme="dark" data-title-key="page.title">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="color-scheme" content="dark light" />
+        <title>Nest</title>
+        <link rel="stylesheet" href="kit/tokens.css" />
+        <link rel="stylesheet" href="kit/components.css" />
+        <link rel="stylesheet" href="show.css" />
+        <script src="i18n.js"></script>
+        <script src="kit/icons.js"></script>
+        <script src="kit/mockup.js"></script>
+        <style>
+            .variants-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+                gap: 12px;
+                margin-top: 12px;
+            }
+            .vcard {
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+                padding: 14px 16px;
+                border: 1px solid var(--border-2);
+                border-radius: var(--r-lg);
+                background: var(--surface);
+            }
+            .vcard h3 {
+                margin: 0;
+                font-size: 16px;
+            }
+            .vcard p {
+                margin: 0;
+                color: var(--dim);
+                font-size: 13px;
+            }
+            .vcard .partner-line {
+                padding: 6px 10px;
+                border-left: 3px solid var(--partner);
+                background: color-mix(in srgb, var(--partner) 10%, transparent);
+                border-radius: 0 6px 6px 0;
+                color: var(--text);
+                font-size: 12.5px;
+            }
+            .vcard .links {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 6px;
+                margin-top: auto;
+                padding-top: 4px;
+            }
+            .check {
+                list-style: none;
+                padding: 0;
+                display: grid;
+                gap: 6px;
+            }
+            .check li {
+                display: grid;
+                grid-template-columns: 20px 1fr;
+                gap: 8px;
+                align-items: start;
+            }
+            .check input {
+                margin-top: 4px;
+                accent-color: var(--accent);
+            }
+            .page h2 {
+                margin: 28px 0 8px;
+            }
+            .rules {
+                display: grid;
+                gap: 6px;
+                padding-left: 18px;
+                color: var(--dim);
+            }
+            .rules b {
+                color: var(--text);
+            }
+            .swatch {
+                display: inline-block;
+                width: 10px;
+                height: 10px;
+                border-radius: 3px;
+                vertical-align: 0;
+                margin-right: 4px;
+            }
+        </style>
+    </head>
+    <body class="console">
+        <header class="topbar">
+            <a class="brand" href="index.html"><span>Nest</span><span class="brand-sub" data-i18n="brand.sub"></span></a>
+            <nav class="variants">
+                <a href="index.html" aria-current="page" data-i18n="nav.index"></a>
+                <a href="v1-shelves.html" data-i18n="v1.name"></a>
+                <a href="v2-tiles.html" data-i18n="v2.name"></a>
+                <a href="v3-screener.html" data-i18n="v3.name"></a>
+                <a href="v4-inspector.html" data-i18n="v4.name"></a>
+                <a href="v5-feed.html" data-i18n="v5.name"></a>
+            </nav>
+            <div class="topbar-right">
+                <div class="seg" role="group" data-i18n-attr="aria-label:lang.label">
+                    <button type="button" data-set-lang="ru">RU</button>
+                    <button type="button" data-set-lang="en">EN</button>
+                </div>
+                <div class="seg" role="group" data-i18n-attr="aria-label:theme.label">
+                    <button type="button" data-set-theme="dark" data-i18n-attr="title:theme.dark,aria-label:theme.dark"><svg class="icon"><use href="#i-moon" /></svg></button>
+                    <button type="button" data-set-theme="light" data-i18n-attr="title:theme.light,aria-label:theme.light"><svg class="icon"><use href="#i-sun" /></svg></button>
+                    <button type="button" data-set-theme="system" data-i18n-attr="title:theme.system,aria-label:theme.system"><svg class="icon"><use href="#i-system" /></svg></button>
+                </div>
+            </div>
+        </header>
+
+        <main class="page page-wide">
+            <div class="page-head">
+                <div>
+                    <h1>Каталог Nest — витрина, пять вариантов</h1>
+                    <p>
+                        Каталог в терминале — единственная витрина виджетов Nest. Сегодня это служебный список в одну колонку: строки похожи
+                        друг на друга, глазу не за что зацепиться. Ниже — пять разных раскладок одной и той же страницы «Каталог» в окне Nest.
+                        Во всех пяти работает всё, что каталог умеет сейчас: поиск, теги, разделы «Новые», «Партнёры», «Все» и категории,
+                        сортировка, фильтр по автору (клик по имени), установка, обновление и открытие виджета. И в каждом варианте
+                        партнёрский виджет выглядит иначе, чем остальные, а раздел «Партнёры» имеет свой собственный дизайн.
+                    </p>
+                </div>
+            </div>
+
+            <div class="banner banner-warn">
+                <svg class="icon"><use href="#i-warn" /></svg>
+                <span class="banner-body">
+                    Данные настоящие — двадцать виджетов публичного каталога на 13.10.2026: имена, иконки, описания, версии, авторы, установки,
+                    «стоят сейчас», «открывали за 7 дней», даты, права, адреса, отметка «Партнёр». Пунктиром отмечено придуманное:
+                    какие виджеты у вас установлены и ждут обновления, анонс партнёра (лента анонсов пока пуста) и место под обложку. Числа,
+                    которых нет, не рисуются вовсе — никогда ноль и никогда «сегодня».
+                </span>
+            </div>
+
+            <h2>Варианты</h2>
+            <div class="variants-grid">
+                <article class="vcard">
+                    <h3>1 — Полки</h3>
+                    <p>
+                        Витрина как в магазине приложений. «Обзор» — новый раздел: баннеры партнёров, полки «Новые за две недели»,
+                        «Популярное на этой неделе», «Недавно обновлены» (с «Что нового») и блок «По категориям» с тремя лидерами.
+                        Любой раздел, поиск или тег — сетка тех же плиток.
+                    </p>
+                    <p class="partner-line">Партнёр: баннер-карточка в цвете своей иконки на «Обзоре». «Партнёры» — зал больших постеров с
+                        цифрами и анонсом сверху.</p>
+                    <p><b>На экране 1000 × 720:</b> на «Обзоре» 6 карточек целиком, в сетке раздела — 9. <b>Чем платит:</b> полки прячут часть виджетов за горизонтальной прокруткой.</p>
+                    <div class="links">
+                        <a class="btn btn-primary btn-sm" href="v1-shelves.html">Открыть</a>
+                        <a class="btn btn-sm" href="v1-shelves.html?section=partners">Партнёры</a>
+                        <a class="btn btn-sm" href="v1-shelves.html?section=all">Все</a>
+                        <a class="btn btn-sm" href="v1-shelves.html?vw=780">780</a>
+                    </div>
+                </article>
+                <article class="vcard">
+                    <h3>2 — Плитка</h3>
+                    <p>
+                        Рейка разделов остаётся как сейчас, список становится сеткой плотных карточек: описание в три строки, три числа
+                        (установок / стоят / за 7 дней), три факта доверия значками (пакет, сеть, права), кнопка.
+                    </p>
+                    <p class="partner-line">Партнёр: карточка вдвое шире, с постером и тегами. «Партнёры» — мозаика: первый партнёр
+                        занимает блок 2×2 со всеми фактами, остальные — рядом.</p>
+                    <p><b>На экране 1000 × 720:</b> 5 карточек целиком и 2 наполовину; на 1280 — четыре колонки. <b>Чем платит:</b> меньше всех виджетов на экран, сетка «прыгает» вокруг широких карточек.</p>
+                    <div class="links">
+                        <a class="btn btn-primary btn-sm" href="v2-tiles.html">Открыть</a>
+                        <a class="btn btn-sm" href="v2-tiles.html?section=partners">Партнёры</a>
+                        <a class="btn btn-sm" href="v2-tiles.html?vw=780">780</a>
+                        <a class="btn btn-sm" href="v2-tiles.html?vw=1280">1280</a>
+                    </div>
+                </article>
+                <article class="vcard">
+                    <h3>3 — Скринер</h3>
+                    <p>
+                        Каталог читается как скринер монет: таблица, сортировка кликом по заголовку, полоса «за 7 дней», процент тех,
+                        кто не удалил, факты доверия значками. Клик по строке раскрывает её на месте: описание, «Что нового», все права,
+                        все адреса, размер, хеш, даты.
+                    </p>
+                    <p class="partner-line">Партнёры закреплены сверху своей группой (переключатель «Партнёры сверху»). «Партнёры» —
+                        таблица сравнения бок о бок: одни и те же факты на одной строке, лидер по числам отмечен.</p>
+                    <p><b>На экране 1000 × 720:</b> 7–8 строк, но в каждой больше всего цифр; раскрытие показывает всё остальное. <b>Чем платит:</b> самый «служебный» вид — ближе всего к сегодняшнему.</p>
+                    <div class="links">
+                        <a class="btn btn-primary btn-sm" href="v3-screener.html">Открыть</a>
+                        <a class="btn btn-sm" href="v3-screener.html?section=partners">Сравнение</a>
+                        <a class="btn btn-sm" href="v3-screener.html?vw=780">780</a>
+                        <a class="btn btn-sm" href="v3-screener.html?vw=1280">1280</a>
+                    </div>
+                </article>
+                <article class="vcard">
+                    <h3>4 — Список + карточка</h3>
+                    <p>
+                        Компактный двухстрочный список слева, справа — полная карточка выбранного: числа, «Что нового», что виджету можно,
+                        куда он ходит, теги, факты. Выбрать можно, не открывая страницу виджета.
+                    </p>
+                    <p class="partner-line">Партнёр: фиолетовая полоса в списке, карточка с постером. «Партнёры» — список постеров,
+                        над карточкой партнёра — его анонс.</p>
+                    <p><b>На экране 1000 × 720:</b> 10 строк списка и полная карточка одного виджета. <b>Чем платит:</b> список узкий; на 780 карточка занимает почти половину окна.</p>
+                    <div class="links">
+                        <a class="btn btn-primary btn-sm" href="v4-inspector.html">Открыть</a>
+                        <a class="btn btn-sm" href="v4-inspector.html?section=partners">Партнёры</a>
+                        <a class="btn btn-sm" href="v4-inspector.html?vw=780">780</a>
+                        <a class="btn btn-sm" href="v4-inspector.html?vw=1280">1280</a>
+                    </div>
+                </article>
+                <article class="vcard">
+                    <h3>5 — Лента</h3>
+                    <p>
+                        «Обзор» как новости Nest: анонс партнёра, топ недели полосами, новые, свежие версии с «Что нового», категории с
+                        числами. Остальные разделы — двухстрочные строки с числами справа. Рейка — как сейчас.
+                    </p>
+                    <p class="partner-line">Партнёр: отдельная панель «Партнёры Colibri» рядом с анонсом. «Партнёры» — журнальный
+                        разворот: большой постер через раз слева и справа.</p>
+                    <p><b>На экране 1000 × 720:</b> на «Обзоре» 13 упоминаний виджетов (партнёры, топ, новые), в списке — 5–6 строк с описанием. <b>Чем платит:</b> «Обзор» живёт контентом — без анонсов и «Что нового» он пустеет.</p>
+                    <div class="links">
+                        <a class="btn btn-primary btn-sm" href="v5-feed.html">Открыть</a>
+                        <a class="btn btn-sm" href="v5-feed.html?section=partners">Партнёры</a>
+                        <a class="btn btn-sm" href="v5-feed.html?section=all">Все</a>
+                        <a class="btn btn-sm" href="v5-feed.html?vw=1280">1280</a>
+                    </div>
+                </article>
+            </div>
+
+            <h2>Чем партнёр отличается — общее для всех вариантов</h2>
+            <ul class="rules">
+                <li>
+                    <b>Свой цвет.</b> <span class="swatch" style="background: var(--partner)"></span>Фиолетовый — уже существующий в терминале цвет
+                    партнёра, в обеих темах. Он не пересекается со смыслами остальных: оранжевый — «скачать» (установить, обновить),
+                    зелёный — «уже есть» (открыть), янтарный — предупреждения (hosted, embeds, чтение счёта).
+                </li>
+                <li><b>Знак.</b> Рукопожатие и «Партнёр» — на каждой плитке, строке и карточке; в разделе «Партнёры» — «Партнёр Colibri».</li>
+                <li>
+                    <b>Постер.</b> У партнёра есть баннер в цвете его собственной иконки — без работы со стороны партнёра. Если автор
+                    загрузил обложку 8 : 3, она встаёт на место постера (её пока нет ни у кого; место отмечено пунктиром). Обложка приходит
+                    со страницей виджета, не со списком, — для трёх партнёров это три лишних запроса.
+                </li>
+                <li><b>Анонс.</b> Партнёрский анонс (картинка 16 : 9, заголовок, текст, кнопка стрима) показывается в разделе «Партнёры» и на «Обзоре».</li>
+                <li><b>Порядок не меняется.</b> Отметка не поднимает виджет в сортировке, кроме варианта 3, где закрепление — отдельный переключатель.</li>
+            </ul>
+
+            <h2>Что проверить</h2>
+            <ul class="check">
+                <li><input type="checkbox" /><span>На 780 (минимум окна), 1000 (по умолчанию) и 1280 нет горизонтальной прокрутки.</span></li>
+                <li><input type="checkbox" /><span>Партнёрский виджет узнаётся с первого взгляда в любом разделе, а не только в «Партнёрах».</span></li>
+                <li><input type="checkbox" /><span>Раздел «Партнёры» выглядит как отдельная представительская подборка, а не как отфильтрованный список.</span></li>
+                <li><input type="checkbox" /><span>Сколько виджетов видно на экране 1000 × 720 и хватает ли этого, чтобы выбрать.</span></li>
+                <li><input type="checkbox" /><span>Поиск, теги, сортировка, клик по автору и разделы работают в каждом варианте.</span></li>
+                <li><input type="checkbox" /><span>Установить → «Открыть в окне»: кнопка меняется на месте (это макет, ничего не скачивается).</span></li>
+                <li><input type="checkbox" /><span>В строке не больше одного зелёного элемента; оранжевый — только «скачать».</span></li>
+                <li><input type="checkbox" /><span>Светлая тема перекрашивает всё; английский не ломает вёрстку.</span></li>
+            </ul>
+
+            <h2>Пульт</h2>
+            <p class="dim">
+                Нижняя жёлтая полоса — не часть интерфейса: ширина окна (780 / 1000 / 1280), высота (560 / 720 / 900) и прыжок в раздел.
+                Те же параметры в адресе: <code>?vw=780</code>, <code>?vh=900</code>, <code>?section=partners</code>,
+                <code>?sort=installs</code>, <code>?lang=en</code>; <code>?bare=1</code> прячет полосу для скриншотов.
+                Замечания — в <a href="https://github.com/Colibriecosystem/colibri-mockups/issues">issues этого репозитория</a>: пишите номер
+                варианта и что именно, например «в третьем партнёры сверху мешают сортировке по установкам».
+            </p>
+        </main>
+    </body>
+</html>

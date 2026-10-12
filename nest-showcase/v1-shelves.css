@@ -1,0 +1,373 @@
+/* Variant 1 — shelves. Layout only; the shared fragments are painted by show.css. */
+.v-shelves {
+    flex-direction: column;
+}
+.v1-top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px 0;
+}
+.v1-search {
+    flex: 1;
+}
+.v1-nav {
+    padding: 10px 16px 10px;
+    border-bottom: 1px solid var(--border);
+}
+.v1-main {
+    flex: 1;
+    padding: 14px 16px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+}
+.v1-listhead {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: -12px;
+}
+.v1-listhead b {
+    font-size: 15px;
+}
+
+/* ---- partner banner cards ---- */
+.v1-partners .sec-head .sub {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+.pcards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+    gap: 12px;
+}
+.pcard {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--partner-border);
+    border-radius: var(--r-xl);
+    overflow: hidden;
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--partner) 10%, transparent), 0 8px 24px color-mix(in srgb, var(--partner) 12%, transparent);
+}
+.pc-banner {
+    height: 58px;
+    place-items: start end;
+    padding: 8px;
+}
+.pc-banner .badge-partner {
+    position: relative;
+    background: rgb(255 255 255 / 0.16);
+    border-color: rgb(255 255 255 / 0.3);
+    backdrop-filter: blur(4px);
+}
+.pc-body {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 0 14px 12px;
+    flex: 1;
+}
+.pc-head {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    margin-top: -26px;
+}
+.pc-head .badges {
+    margin-right: auto;
+    padding-bottom: 2px;
+}
+.pc-head .trust {
+    padding-bottom: 3px;
+}
+.pc-icon {
+    border: 3px solid var(--card);
+    box-shadow: 0 6px 16px rgb(0 0 0 / 0.3);
+}
+.pc-id {
+    min-width: 0;
+    margin-top: -2px;
+}
+.pc-name {
+    font-size: 15px;
+    line-height: 20px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.pc-by {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+}
+.pc-foot {
+    margin-top: auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding-top: 8px;
+    border-top: 1px solid color-mix(in srgb, var(--partner-border) 60%, transparent);
+}
+
+/* ---- shelves ---- */
+.shelf .sec-head {
+    margin-bottom: 8px;
+}
+.shelf-arrows {
+    display: inline-flex;
+    gap: 4px;
+    margin-left: auto;
+}
+.shelf .sec-head .more-link + .shelf-arrows {
+    margin-left: 8px;
+}
+.shelf-track {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 256px;
+    gap: 10px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    padding: 2px 2px 4px;
+}
+.shelf-track::-webkit-scrollbar {
+    display: none;
+}
+
+/* ---- the tile (shelves and the grid) ---- */
+.tile {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 11px 12px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    background: var(--card);
+    box-shadow: var(--shadow-card);
+    scroll-snap-align: start;
+    min-width: 0;
+}
+.tile:hover {
+    border-color: var(--border-2);
+    background: var(--card-hover);
+}
+.tile.is-partner {
+    box-shadow: inset 0 3px 0 var(--partner);
+}
+.t-rank {
+    position: absolute;
+    top: 6px;
+    right: 10px;
+    font-size: 26px;
+    line-height: 30px;
+    font-weight: 600;
+    color: var(--faint);
+    opacity: 0.45;
+    font-variant-numeric: tabular-nums;
+}
+.t-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    padding-right: 22px;
+}
+.t-id {
+    min-width: 0;
+}
+.t-name {
+    font-weight: 600;
+    font-size: 13.5px;
+}
+.t-by {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+}
+.t-by .author-link {
+    max-width: 120px;
+}
+.t-badges {
+    min-height: 18px;
+}
+.t-when {
+    font-size: 11px;
+    color: var(--faint);
+}
+.t-desc,
+.t-notes {
+    min-height: 36px;
+    font-size: 12.5px;
+    color: var(--dim);
+}
+.t-notes b {
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-weight: 400;
+    font-size: 11px;
+}
+.t-foot {
+    margin-top: auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding-top: 4px;
+}
+.t-foot .stats-inline {
+    gap: 8px;
+    flex-wrap: nowrap;
+}
+
+.tile-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(244px, 1fr));
+    gap: 10px;
+}
+
+/* ---- by category ---- */
+.catblocks {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 10px;
+}
+.catblock {
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    background: var(--card);
+    padding: 6px;
+}
+.cb-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 6px 6px 8px;
+    font-size: 13px;
+}
+.cb-head .dim {
+    font-size: 11.5px;
+}
+.cb-head:hover b {
+    text-decoration: underline;
+}
+.cb-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 6px;
+    border-radius: 6px;
+    font-size: 12.5px;
+}
+.cb-row:hover {
+    background: var(--surface-2);
+}
+.cb-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.cb-p {
+    color: var(--partner-text);
+    width: 14px;
+    height: 14px;
+}
+.cb-partner .cb-name {
+    color: var(--partner-text);
+    font-weight: 500;
+}
+
+/* ---- the partners hall ---- */
+.v-shelves .partners-lead {
+    margin-bottom: -6px;
+}
+.halls {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+.hall {
+    display: grid;
+    grid-template-columns: minmax(220px, 34%) minmax(0, 1fr);
+    border: 1px solid var(--partner-border);
+    border-radius: var(--r-xl);
+    overflow: hidden;
+    background: linear-gradient(120deg, color-mix(in srgb, var(--partner) 9%, var(--card)), var(--card) 60%);
+    box-shadow: 0 10px 30px color-mix(in srgb, var(--partner) 14%, transparent);
+}
+.hall-poster {
+    min-height: 220px;
+}
+.hall-body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 14px 16px;
+    min-width: 0;
+}
+.hall-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+}
+.hall-name {
+    font-size: 18px;
+    line-height: 24px;
+    font-weight: 600;
+}
+.hall-by {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 2px;
+    margin-top: 2px;
+}
+.hall-desc {
+    color: var(--text);
+    font-size: 13px;
+    line-height: 19px;
+}
+.hall-foot {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+.acts-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+.hall .stat-tiles {
+    background: var(--partner-border);
+    border-color: var(--partner-border);
+}
+@container app (max-width: 900px) {
+    .hall {
+        grid-template-columns: 1fr;
+    }
+    .hall-poster {
+        min-height: 0;
+        aspect-ratio: 8 / 3;
+    }
+    .hall .stat-tiles {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .shelf-arrows {
+        display: none;
+    }
+}
