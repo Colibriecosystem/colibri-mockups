@@ -2182,3 +2182,24 @@ dialog.page {
     color: var(--danger);
     font-size: var(--fs-sm);
 }
+.an-img {
+    aspect-ratio: 16 / 9;
+}
+.an-img-add,
+.an-img-pick {
+    width: min(100%, 240px);
+}
+.an-img-add {
+    aspect-ratio: 16 / 9;
+}
+.an-img-pick {
+    display: grid;
+    gap: 6px;
+}
+.an-row-main .an-img,
+.an-body .an-img {
+    margin-bottom: 6px;
+}
+.an-body .an-img {
+    max-width: 320px;
+}

@@ -576,6 +576,8 @@ window.AUTHOR_DATA = (function () {
                 textEn: "Thursday at 19:00 Moscow time we go through reading funding before settlement. Questions welcome in our chat beforehand.",
                 at: ago(1, 5),
                 ends: NOW + 5 * DAY,
+                /* pictures are drawn, not files: the art a mock screenshot uses */
+                image: "window",
                 state: "live"
             },
             {
@@ -611,6 +613,7 @@ window.AUTHOR_DATA = (function () {
                 textEn: "",
                 at: ago(3),
                 ends: NOW + 4 * DAY,
+                image: "alert",
                 state: "live"
             }
         ],

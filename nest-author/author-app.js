@@ -50,7 +50,8 @@
         st: null /* the «Из шаблона» form: { id, key, idValue, parent, steps, busy, canCancel, error } */,
         stDone: null /* a project created a moment ago: { id, path, edit, node } */,
         partner: ["none", "widget", "author", "older"].indexOf(params.get("partner")) >= 0 ? params.get("partner") : "author",
-        an: {} /* unsaved announcement drafts: "author" or a widget id → { titleRu, titleEn, textRu, textEn, days } */
+        an: {} /* unsaved announcement drafts: "author" or a widget id → { titleRu, titleEn, textRu, textEn, image, days } */,
+        anImgErr: {} /* why the last picture for a draft was refused, by the same key */
     };
     var emptyWidgets = [];
 
@@ -1992,11 +1993,36 @@
         );
     }
     function annDraft(key) {
-        if (!S.an[key]) S.an[key] = { titleRu: "", titleEn: "", textRu: "", textEn: "", days: AN_DAYS_DEFAULT };
+        if (!S.an[key]) S.an[key] = { titleRu: "", titleEn: "", textRu: "", textEn: "", image: null, days: AN_DAYS_DEFAULT };
         return S.an[key];
     }
     function annTouched(d) {
-        return !!(d.titleRu || d.titleEn || d.textRu || d.textEn);
+        return !!(d.titleRu || d.titleEn || d.textRu || d.textEn || d.image);
+    }
+    /* One optional picture, 16 : 9. Nest checks the bytes the way it checks a screenshot; the mock draws
+       the art a screenshot uses instead of a file. */
+    var AN_ARTS = ["window", "chart", "alert", "table"];
+    function annImage(art) {
+        return '<div class="shot an-img">' + shotArt(art) + "</div>";
+    }
+    function annImageCtl(key, d, readOnly) {
+        var sub = ' data-subj="' + esc(key) + '"';
+        var err = S.anImgErr[key];
+        return (
+            (d.image
+                ? '<div class="an-img-pick">' + annImage(d.image) +
+                  (readOnly ? "" : '<div class="row-actions"><button class="btn btn-sm" data-act="an-img-add"' + sub + ">" + esc(T("au.an.imageReplace")) + '</button><button class="btn btn-sm" data-act="an-img-remove"' + sub + ">" + esc(T("au.an.imageRemove")) + "</button></div>") +
+                  "</div>"
+                : '<button class="lp-add an-img-add" data-act="an-img-add"' + sub + (readOnly ? " disabled" : "") + ">" + icon("image") + "<span>" + esc(T("au.an.imageAdd")) + "</span></button>") +
+            '<span class="hint">' + esc(T("au.an.imageRule")) + "</span>" +
+            (err ? '<span class="err">' + esc(err) + "</span>" : "") +
+            (readOnly
+                ? ""
+                : '<div class="mock-examples">' + esc(T("au.an.examples")) +
+                  ' <button class="btn btn-link btn-sm" data-act="an-img-bad"' + sub + ' data-why="format">' + esc(T("au.an.example.gif")) + "</button>" +
+                  ' <button class="btn btn-link btn-sm" data-act="an-img-bad"' + sub + ' data-why="ratio">' + esc(T("au.an.example.ratio")) + "</button>" +
+                  ' <button class="btn btn-link btn-sm" data-act="an-img-bad"' + sub + ' data-why="size">' + esc(T("au.an.example.big")) + "</button></div>")
+        );
     }
     /* The rule Nest enforces, judged here first: no address of any kind — a scheme, «www.» or a host
        with a path (t.me/…). A bare «node.js» is a word, not a link. */
@@ -2018,7 +2044,7 @@
     }
     /* the draft as it would go out: it ends the chosen number of days from now */
     function annDraftView(d) {
-        return { titleRu: d.titleRu.trim(), titleEn: d.titleEn.trim(), textRu: d.textRu.trim(), textEn: d.textEn.trim(), ends: D.NOW + d.days * D.DAY, mine: true };
+        return { titleRu: d.titleRu.trim(), titleEn: d.titleEn.trim(), textRu: d.textRu.trim(), textEn: d.textEn.trim(), image: d.image, ends: D.NOW + d.days * D.DAY, mine: true };
     }
     /* A user reads their own language and falls back to the other one; the mock's user reads Russian. */
     function annTitle(a) {
@@ -2034,7 +2060,8 @@
         var text = a ? annText(a) : "";
         return (
             '<div class="an-row">' + who +
-            '<span class="an-row-main"><b class="' + (a && !a.mine ? "ph" : "") + '">' + esc(title || T("au.an.previewEmpty")) + "</b>" +
+            '<span class="an-row-main">' + (a && a.image ? annImage(a.image) : "") +
+            '<b class="' + (a && !a.mine ? "ph" : "") + '">' + esc(title || T("au.an.previewEmpty")) + "</b>" +
             (text ? '<span class="an-row-text">' + esc(text) + "</span>" : "") +
             "<small>" + esc(w ? w.name : D.author.name) + (a ? " · " + esc(T("au.an.until", { date: fmtDate(a.ends) })) : "") + "</small></span></div>"
         );
@@ -2062,6 +2089,7 @@
             field("textRu", "au.an.textRu", 500, true) +
             field("titleEn", "au.an.titleEn", 80) +
             field("textEn", "au.an.textEn", 500, true) +
+            "<label>" + esc(T("au.an.image")) + '</label><div class="ctl">' + annImageCtl(key, d, readOnly) + "</div>" +
             "<label>" + esc(T("au.an.days")) + '</label><div class="ctl"><div class="row-actions"><select class="select" data-an="days"' + sub + dis + ">" + days + "</select>" +
             '<span class="hint" id="an-until-' + esc(key) + '">' + esc(T("au.an.until", { date: fmtDate(D.NOW + d.days * D.DAY) })) + "</span></div></div>" +
             "</div>" +
@@ -2075,7 +2103,7 @@
         var liveCard =
             '<div class="card"><h3 class="lp-sub" style="margin-top:0">' + esc(T("au.an.live")) + (live ? ' <span class="chip chip-ok">' + esc(T("au.an.liveChip")) + "</span>" : "") + "</h3>" +
             (live
-                ? '<div class="an-body"><b class="' + (live.mine ? "" : "ph") + '">' + esc(annTitle(live)) + "</b>" + (annText(live) ? "<p>" + esc(annText(live)) + "</p>" : "") + "</div>" +
+                ? '<div class="an-body">' + (live.image ? annImage(live.image) : "") + '<b class="' + (live.mine ? "" : "ph") + '">' + esc(annTitle(live)) + "</b>" + (annText(live) ? "<p>" + esc(annText(live)) + "</p>" : "") + "</div>" +
                   '<p class="hint" style="margin-top:4px">' + esc(T("au.an.liveMeta", { at: fmtDate(live.at), until: fmtDate(live.ends) })) + "</p>" +
                   (readOnly ? "" : '<div class="row-actions" style="margin-top:8px"><button class="btn btn-sm" data-act="an-change"' + sub + ">" + esc(T("au.an.change")) + '</button><button class="btn btn-sm btn-danger" data-act="an-withdraw"' + sub + ">" + esc(T("au.an.withdraw")) + "</button></div>")
                 : '<p class="dim">' + esc(T("au.an.none")) + "</p>") +
@@ -2138,6 +2166,7 @@
         v.state = "live";
         D.announcements.unshift(v);
         delete S.an[key];
+        delete S.anImgErr[key];
         render();
         window.NEST.toast(T("au.toast.anPublished"));
     }
@@ -3555,14 +3584,34 @@
             case "an-change": {
                 var chKey = el.getAttribute("data-subj");
                 var chLive = annLive(chKey);
-                if (chLive) S.an[chKey] = { titleRu: chLive.titleRu, titleEn: chLive.titleEn, textRu: chLive.textRu, textEn: chLive.textEn, days: AN_DAYS_DEFAULT };
+                if (chLive) S.an[chKey] = { titleRu: chLive.titleRu, titleEn: chLive.titleEn, textRu: chLive.textRu, textEn: chLive.textEn, image: chLive.image || null, days: AN_DAYS_DEFAULT };
                 render();
                 break;
             }
             case "an-clear":
                 delete S.an[el.getAttribute("data-subj")];
+                delete S.anImgErr[el.getAttribute("data-subj")];
                 render();
                 break;
+            /* a picture is judged here first (format, 16 : 9, size), then it rides the publish */
+            case "an-img-add": {
+                var ik = el.getAttribute("data-subj");
+                var idr = annDraft(ik);
+                idr.image = AN_ARTS[(AN_ARTS.indexOf(idr.image) + 1) % AN_ARTS.length];
+                delete S.anImgErr[ik];
+                render();
+                break;
+            }
+            case "an-img-remove":
+                annDraft(el.getAttribute("data-subj")).image = null;
+                render();
+                break;
+            case "an-img-bad": {
+                var why = el.getAttribute("data-why");
+                S.anImgErr[el.getAttribute("data-subj")] = T(why === "size" ? "au.an.err.imageSize" : why === "ratio" ? "au.an.err.imageRatio" : "au.an.err.imageFormat");
+                render();
+                break;
+            }
             case "an-example": {
                 var ex = annDraft(el.getAttribute("data-subj"));
                 if (!ex.titleRu) ex.titleRu = T("au.an.titlePh");
