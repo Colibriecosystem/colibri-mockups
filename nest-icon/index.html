@@ -1,0 +1,47 @@
+<!doctype html>
+<!-- The Nest mark, judged where it lives: the terminal's top bar, the Nest window's title bar, and a size
+     strip. The mark itself is nest-mark-data.js (generated, with nest-mark.svg); this page only draws it. -->
+<html lang="ru" data-theme="dark">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="color-scheme" content="dark light" />
+        <title>Nest — значок</title>
+        <link rel="stylesheet" href="nest-icon.css" />
+        <script src="nest-mark-data.js"></script>
+        <script src="nest-icon.js" defer></script>
+    </head>
+    <body>
+        <main class="page">
+            <h1 data-i="title"></h1>
+            <p class="lead" data-i="lead"></p>
+            <div class="hero">
+                <div class="hero-mark chrome-dark" data-mark="brand" data-size="128"></div>
+                <div class="hero-mark chrome-light" data-mark="brand" data-size="128"></div>
+            </div>
+
+            <h2 data-i="toolbar"></h2>
+            <p class="dim" data-i="toolbarHint"></p>
+            <div class="stage" id="toolbars"></div>
+
+            <h2 data-i="titlebar"></h2>
+            <p class="dim" data-i="titlebarHint"></p>
+            <div class="stage" id="titlebars"></div>
+
+            <h2 data-i="loupe"></h2>
+            <p class="dim" data-i="loupeHint"></p>
+            <div class="loupe" id="loupe"></div>
+
+            <h2 data-i="sizes"></h2>
+            <p class="dim" data-i="sizesHint"></p>
+            <div class="stage" id="sizes"></div>
+        </main>
+
+        <footer class="mockbar">
+            <b>MOCKUP</b>
+            <span class="grp"><span data-i="theme"></span><button data-theme-set="dark">dark</button><button data-theme-set="light">light</button></span>
+            <span class="grp"><button data-lang-set="ru">RU</button><button data-lang-set="en">EN</button></span>
+            <span class="grp"><span data-i="scale"></span><button data-scale-set="1">100%</button><button data-scale-set="1.5">150%</button><button data-scale-set="2">200%</button></span>
+        </footer>
+    </body>
+</html>

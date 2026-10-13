@@ -1,0 +1,293 @@
+/* Page chrome follows the page theme; the replicas carry the terminal's own colours and do not. */
+:root {
+    --bg: #0b0f17;
+    --text: #dce3ee;
+    --dim: #8a96ab;
+    --border: #232c3d;
+    --card: #121722;
+}
+:root[data-theme="light"] {
+    --bg: #f5f7fa;
+    --text: #1b2433;
+    --dim: #5a6478;
+    --border: #d9dee7;
+    --card: #ffffff;
+}
+* {
+    box-sizing: border-box;
+}
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 14px/1.5 Roboto, "Segoe UI", system-ui, sans-serif;
+    padding-bottom: 56px;
+}
+.page {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 24px 16px;
+}
+h1 {
+    font-size: 22px;
+    margin: 0 0 6px;
+}
+h2 {
+    font-size: 16px;
+    margin: 32px 0 4px;
+}
+.lead,
+.dim {
+    color: var(--dim);
+    max-width: 75ch;
+    margin: 0 0 12px;
+}
+.hero {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin: 16px 0 8px;
+}
+.hero-mark {
+    padding: 16px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+}
+.stage {
+    display: grid;
+    gap: 10px;
+    overflow-x: auto;
+}
+.stage > * {
+    zoom: var(--scale, 1);
+}
+
+/* The terminal's two default chromes (App.axaml: ScalpWindowHeader, ScalpBodyTextDim, ScalpBodyText). */
+.chrome-light {
+    --hdr: #ebf2fa;
+    --dimink: #475569;
+    --ink: #0f172a;
+    --line: #d4dce8;
+    background: var(--hdr);
+    color: var(--ink);
+    --nest-twig: #117fdb;
+    --nest-wing: #1e7fff;
+    --nest-steel: #1954db;
+    --nest-beak: #117fdb;
+    --nest-core: #5bb0ff;
+    --nest-eyes: #5bb0ff;
+    --nest-neon: #5bb0ff;
+}
+.chrome-dark {
+    --hdr: #0e1a2e;
+    --dimink: #94a3b8;
+    --ink: #e2e8f0;
+    --line: #1f2c44;
+    background: var(--hdr);
+    color: var(--ink);
+    --nest-twig: #117fdb;
+    --nest-wing: #1e7fff;
+    --nest-steel: #7fb4ff;
+    --nest-beak: #1954db;
+    --nest-core: #5bb0ff;
+    --nest-eyes: #ffffff;
+    --nest-neon: #a8d2ff;
+}
+/* A header colour a user picked: the holes must show it, never a stale colour. */
+.chrome-custom {
+    --hdr: #3b1f5e;
+    --dimink: #c9b8e6;
+    --ink: #f3ecff;
+    --line: #4d2c76;
+    background: var(--hdr);
+    color: var(--ink);
+    --nest-twig: #117fdb;
+    --nest-wing: #1e7fff;
+    --nest-steel: #7fb4ff;
+    --nest-beak: #1954db;
+    --nest-core: #5bb0ff;
+    --nest-eyes: #ffffff;
+    --nest-neon: #a8d2ff;
+}
+.mono {
+    color: var(--dimink);
+}
+
+/* Top bar replica: MainWindow's MenuPanel — 34 px, items 15 px glyph + bold label, dim until hover. */
+.topbar {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    height: 34px;
+    padding: 0 8px;
+    border-radius: 6px;
+    border: 1px solid var(--line);
+    white-space: nowrap;
+    width: max-content;
+    min-width: 100%;
+}
+.topbar .logo {
+    width: 20px;
+    height: 20px;
+    margin-right: 6px;
+}
+.topbar .brandname {
+    font-weight: 700;
+    margin-right: 10px;
+}
+.item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--ink);
+}
+.item svg {
+    color: var(--dimink);
+    flex: none;
+}
+.item:hover,
+.item.hover {
+    background: var(--line);
+}
+.item:hover svg,
+.item.hover svg {
+    color: var(--ink);
+}
+.tag {
+    font-size: 11px;
+    color: var(--dim);
+    margin: 4px 0 -4px;
+}
+
+/* Nest title bar replica: 34 px, the mark at 16 px, «Nest» SemiBold 12, bullhorn, caption buttons. */
+.titlebar {
+    display: flex;
+    align-items: center;
+    height: 34px;
+    width: 520px;
+    padding-left: 10px;
+    border-radius: 6px;
+    border: 1px solid var(--line);
+    gap: 8px;
+}
+.titlebar .name {
+    font-size: 12px;
+    font-weight: 600;
+}
+.titlebar .grow {
+    flex: 1;
+}
+.titlebar .cap {
+    width: 40px;
+    height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--dimink);
+}
+
+/* Size strip. */
+.sizes {
+    display: flex;
+    align-items: flex-end;
+    gap: 18px;
+    padding: 12px 14px;
+    border-radius: 6px;
+    border: 1px solid var(--line);
+    width: max-content;
+}
+.sizes figure {
+    margin: 0;
+    display: grid;
+    justify-items: center;
+    gap: 4px;
+}
+.sizes figcaption {
+    font-size: 11px;
+    color: var(--dimink);
+}
+
+/* The loupe: the mark rasterised at its real pixel size, then blown up without smoothing. */
+.loupe {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+.loupe figure {
+    margin: 0;
+    display: grid;
+    gap: 4px;
+}
+.loupe img {
+    width: 180px;
+    height: 180px;
+    image-rendering: pixelated;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+}
+.loupe figcaption {
+    font-size: 11px;
+    color: var(--dim);
+}
+
+.mockbar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    align-items: center;
+    padding: 8px 16px;
+    background: #f5c518;
+    color: #1b1b1b;
+    font-size: 13px;
+}
+.mockbar .grp {
+    display: inline-flex;
+    gap: 4px;
+    align-items: center;
+}
+.mockbar button {
+    border: 1px solid #1b1b1b;
+    background: transparent;
+    border-radius: 4px;
+    padding: 2px 8px;
+    cursor: pointer;
+    font: inherit;
+}
+.mockbar button[aria-pressed="true"] {
+    background: #1b1b1b;
+    color: #f5c518;
+}
+html.bare /* The loupe: the mark rasterised at its real pixel size, then blown up without smoothing. */
+.loupe {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+.loupe figure {
+    margin: 0;
+    display: grid;
+    gap: 4px;
+}
+.loupe img {
+    width: 180px;
+    height: 180px;
+    image-rendering: pixelated;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+}
+.loupe figcaption {
+    font-size: 11px;
+    color: var(--dim);
+}
+
+.mockbar {
+    display: none;
+}
